@@ -12,7 +12,7 @@
   --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
   --grid: #e1e0d9; --axis: #c3c2b7; --ring: rgba(11,11,11,0.10);
   --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4;
-  --band: rgba(42,120,214,0.10);
+  --band: rgba(137,135,129,0.14);
   --good: #006300; --bad: #d03b3b; --warn: #a86a00;
   --accent: #b8860b;
 }
@@ -22,7 +22,7 @@
     --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
     --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
     --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
-    --band: rgba(57,135,229,0.16);
+    --band: rgba(195,194,183,0.14);
     --good: #0ca30c; --bad: #e66767; --warn: #fab219; --accent: #e0b84a;
   }
 }
@@ -31,7 +31,7 @@
   --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
   --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
   --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
-  --band: rgba(57,135,229,0.16);
+  --band: rgba(195,194,183,0.14);
   --good: #0ca30c; --bad: #e66767; --warn: #fab219; --accent: #e0b84a;
 }
 * { box-sizing: border-box; }
@@ -278,10 +278,12 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; }
       traces.push(ligne(X, cut(B.hi), "Bollinger haut", "rgba(0,0,0,0)", 0, { showlegend: false, hoverinfo: "skip", hovertemplate: null }));
       traces.push(ligne(X, cut(B.lo), "Bollinger (20, 2σ)", "rgba(0,0,0,0)", 0, { fill: "tonexty", fillcolor: css("--band"), hoverinfo: "skip", hovertemplate: null }));
     }
-    traces.push(ligne(X, cut(v), nom, css("--s1"), 2));
-    traces.push(ligne(X, cut(m1), lbl + S.mm1, css("--s2"), 1.5));
-    traces.push(ligne(X, cut(m2), lbl + S.mm2, css("--s3"), 1.5));
-    traces.push(ligne(X, cut(m3), lbl + S.mm3, css("--s4"), 1.5));
+    // Couleurs lisibles par les daltoniens (rouge-vert) + style de trait différent pour chaque courbe
+    const trait = (couleur, largeur, dash) => ({ line: { color: couleur, width: largeur, dash: dash } });
+    traces.push(ligne(X, cut(v), nom, null, 0, trait(css("--ink"), 2.2, "solid")));
+    traces.push(ligne(X, cut(m1), lbl + S.mm1, null, 0, trait(css("--s1"), 2, "solid")));
+    traces.push(ligne(X, cut(m2), lbl + S.mm2, null, 0, trait(css("--s2"), 2, "dash")));
+    traces.push(ligne(X, cut(m3), lbl + S.mm3, null, 0, trait(css("--muted"), 2, "dot")));
     Plotly.react("chMain", traces, layoutBase({ yaxis: Object.assign(layoutBase().yaxis, { ticksuffix: " €" }) }), CFG);
 
     $("chRsi").style.display = S.rsi ? "" : "none";
