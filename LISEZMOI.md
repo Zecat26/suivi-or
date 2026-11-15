@@ -4,11 +4,18 @@ Outil personnel de suivi des cours : 20 Francs Marianne, Souverain, 50 Pesos, Kr
 
 ## Utilisation au quotidien
 
-- **Ouvrir `tableau_de_bord.html`** (double-clic). Une connexion Internet est nécessaire pour la bibliothèque de graphiques.
-- La collecte tourne **seule du lundi au vendredi à 18h00** et **à chaque ouverture de session Windows** (2 min après)
-  — tâche planifiée « Suivi Or - collecte quotidienne ». Si le PC était éteint à 18h00, elle est rattrapée au démarrage suivant.
-  Plusieurs collectes le même jour ne créent pas de doublon : le dernier relevé du jour remplace le précédent.
-- Collecte manuelle à tout moment : `python suivi_or.py`
+- **Tableau de bord en ligne : https://zecat26.github.io/suivi-or/** (ordinateur, téléphone, tablette).
+- La collecte tourne **sur les serveurs GitHub**, PC éteint, du lundi au vendredi vers 18h00 (heure de Paris, 19h00 en été).
+  GitHub peut décaler l'exécution de quelques minutes à une heure. Chaque collecte enregistre les données dans le dépôt
+  https://github.com/Zecat26/suivi-or et met à jour le tableau de bord en ligne. En cas d'échec, GitHub envoie un e-mail.
+- **Collecte manuelle** : onglet *Actions* du dépôt → *Collecte quotidienne* → *Run workflow*.
+- **Copie locale** : `git pull` dans ce dossier récupère les dernières données ; `tableau_de_bord.html` s'ouvre alors aussi en local.
+
+### Tâche Windows locale (secours, désactivée)
+
+La tâche planifiée « Suivi Or - collecte quotidienne » (lundi–vendredi 18h00 + ouverture de session) est **désactivée**
+depuis le passage à GitHub, pour éviter deux collectes concurrentes. Pour la réactiver en cas de besoin :
+`Enable-ScheduledTask -TaskName 'Suivi Or - collecte quotidienne'` (puis penser à `git pull` avant et `git push` après).
 
 ## Contenu
 
