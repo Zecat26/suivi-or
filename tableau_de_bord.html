@@ -120,7 +120,7 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; }
     <div class="grid2">
       <div class="card">
         <h2>Prime des pièces sur l'or (cotation CPR)</h2>
-        <p class="sub">% au-dessus de la valeur de l'or fin contenu. Une prime basse est historiquement plus favorable à l'achat.</p>
+        <p class="sub">% au-dessus de la valeur de l'or fin contenu, lissé sur 10 séances. Une prime basse est historiquement plus favorable à l'achat.</p>
         <div id="chPrime" class="chart" style="height:320px"></div>
       </div>
       <div class="card">
@@ -351,13 +351,24 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; }
   }
 
   function renduAnnexes() {
-    const cols = ["--s1", "--s2", "--s3", "--s4", "--s5"].map(css);
-    // Primes
+    // Styles lisibles par les daltoniens (rouge-vert) : 2 couleurs (bleu / orange) × styles de trait, + noir/blanc pour l'or
+    const STYLES = [
+      { c: css("--s1"), dash: "solid", w: 2 },     // 20 Francs Marianne : bleu plein
+      { c: css("--s2"), dash: "solid", w: 2 },     // Souverain : orange plein
+      { c: css("--s1"), dash: "dash", w: 2 },      // 50 Pesos : bleu tirets
+      { c: css("--s2"), dash: "dot", w: 2.4 },     // Krugerrand : orange pointillés
+      { c: css("--ink"), dash: "solid", w: 2.6 },  // Once d'or : noir/blanc épais
+    ];
+    const style = (k) => ({ line: { color: STYLES[k].c, width: STYLES[k].w, dash: STYLES[k].dash } });
+
+    // Primes (lissées sur 10 séances)
+    const LISSAGE = 10;
     const tp = D.pieces.map((p, k) => {
       const pts = p.cpr.filter(r => !estWeekend(r[0]));
       const x = [], y = [];
       pts.forEach(r => { const s = spotAu(r[0]); if (s) { x.push(r[0]); y.push(r[1] / (s / GPO * p.or_fin_g) - 1); } });
-      return ligne(x, y, p.nom, cols[k], 1.5, { hovertemplate: "%{y:.1%}<extra>" + p.nom + "</extra>" });
+      const yl = sma(y, LISSAGE);
+      return ligne(x, yl, p.nom, null, 0, Object.assign(style(k), { hovertemplate: "%{y:.1%}<extra>" + p.nom + "</extra>" }));
     });
     Plotly.react("chPrime", tp, layoutBase({ yaxis: Object.assign(layoutBase().yaxis, { tickformat: ".0%" }) }), CFG);
 
@@ -369,7 +380,7 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; }
     const tb = toutes.map((s, k) => {
       const pts = s.pts.filter(p => p.d >= deb); if (!pts.length) return null;
       const b = pts[0].v;
-      return ligne(pts.map(p => p.d), pts.map(p => p.v / b * 100), s.nom, cols[k], k === 4 ? 2.5 : 1.5, { hovertemplate: "%{y:.1f}<extra>" + s.nom + "</extra>" });
+      return ligne(pts.map(p => p.d), pts.map(p => p.v / b * 100), s.nom, null, 0, Object.assign(style(k), { hovertemplate: "%{y:.1f}<extra>" + s.nom + "</extra>" }));
     }).filter(Boolean);
     Plotly.react("chBase", tb, layoutBase({ yaxis: Object.assign(layoutBase().yaxis, { tickformat: ".0f" }) }), CFG);
   }
