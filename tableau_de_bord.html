@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Suivi Or</title>
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+<script src="data/donnees.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --ring: rgba(11,11,11,0.10);
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100; --s5: #e87ba4;
+  --band: rgba(42,120,214,0.10);
+  --good: #006300; --bad: #d03b3b; --warn: #a86a00;
+  --accent: #b8860b;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+    --band: rgba(57,135,229,0.16);
+    --good: #0ca30c; --bad: #e66767; --warn: #fab219; --accent: #e0b84a;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10);
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500; --s5: #d55181;
+  --band: rgba(57,135,229,0.16);
+  --good: #0ca30c; --bad: #e66767; --warn: #fab219; --accent: #e0b84a;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 20px 16px 48px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 16px; margin-bottom: 16px; }
+h1 { font-size: 22px; margin: 0; }
+h1 span { color: var(--accent); }
+.meta { color: var(--muted); font-size: 12.5px; }
+h2 { font-size: 15px; margin: 0 0 4px; }
+.sub { color: var(--ink-2); font-size: 12.5px; margin: 0 0 8px; }
+.card { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: end; }
+.ctl { display: flex; flex-direction: column; gap: 4px; }
+.ctl > span { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+select, input[type=number] { font: inherit; color: var(--ink); background: var(--page);
+  border: 1px solid var(--axis); border-radius: 6px; padding: 5px 8px; }
+input[type=number] { width: 64px; }
+.seg { display: inline-flex; border: 1px solid var(--axis); border-radius: 6px; overflow: hidden; }
+.seg button { font: inherit; font-size: 13px; background: transparent; color: var(--ink-2); border: 0;
+  padding: 5px 10px; cursor: pointer; border-right: 1px solid var(--axis); }
+.seg button:last-child { border-right: 0; }
+.seg button.on { background: var(--ink); color: var(--surface); }
+label.chk { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; padding-bottom: 5px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tile { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; padding: 12px 14px; }
+.tile .k { font-size: 12px; color: var(--muted); }
+.tile .v { font-size: 22px; font-weight: 600; margin-top: 2px; }
+.tile .d { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+.up { color: var(--good); } .down { color: var(--bad); } .flat { color: var(--warn); }
+.chart { width: 100%; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 13px; }
+th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--muted); font-weight: 500; font-size: 12px; }
+.tablewrap { overflow-x: auto; }
+.note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+.empty { padding: 40px; text-align: center; color: var(--ink-2); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span>●</span> Suivi Or &amp; pièces d'investissement</h1>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <div class="card" id="noData" hidden>
+    <div class="empty">Aucune donnée : lancez d'abord <code>python suivi_or.py</code> dans ce dossier.</div>
+  </div>
+
+  <div id="app">
+    <!-- Prix du jour -->
+    <div class="card">
+      <h2>Prix du jour sur achat-or-et-argent.fr</h2>
+      <p class="sub" id="jourSub"></p>
+      <div class="tablewrap"><table id="tabJour"></table></div>
+      <p class="note">Prime = écart entre le prix et la valeur de l'or fin contenu dans la pièce. Écart = coût d'un aller-retour (achat puis revente immédiate).</p>
+    </div>
+
+    <!-- Contrôles -->
+    <div class="card controls">
+      <label class="ctl"><span>Série</span><select id="selSerie"></select></label>
+      <label class="ctl"><span>Prix</span><select id="selType"></select></label>
+      <div class="ctl"><span>Période</span><div class="seg" id="segPeriode"></div></div>
+      <label class="ctl"><span>MM courte</span><input type="number" id="mm1" min="2" max="400"></label>
+      <label class="ctl"><span>MM moyenne</span><input type="number" id="mm2" min="2" max="400"></label>
+      <label class="ctl"><span>MM longue</span><input type="number" id="mm3" min="2" max="400"></label>
+      <div class="ctl"><span>Type de moyenne</span><div class="seg" id="segMM"></div></div>
+      <label class="chk"><input type="checkbox" id="chkBoll"> Bandes de Bollinger (20, 2σ)</label>
+      <label class="chk"><input type="checkbox" id="chkRsi"> RSI (14)</label>
+    </div>
+
+    <div class="tiles" id="tiles"></div>
+
+    <div class="card">
+      <h2 id="titrePrincipal"></h2>
+      <p class="sub" id="sousTitrePrincipal"></p>
+      <div id="chMain" class="chart" style="height:440px"></div>
+      <div id="chRsi" class="chart" style="height:170px"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <h2>Prime des pièces sur l'or (cotation CPR)</h2>
+        <p class="sub">% au-dessus de la valeur de l'or fin contenu. Une prime basse est historiquement plus favorable à l'achat.</p>
+        <div id="chPrime" class="chart" style="height:320px"></div>
+      </div>
+      <div class="card">
+        <h2>Performance comparée (base 100)</h2>
+        <p class="sub">Évolution relative sur la période choisie, toutes séries ramenées à 100 au départ.</p>
+        <div id="chBase" class="chart" style="height:320px"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Dernières séances</h2>
+      <p class="sub" id="tabSub"></p>
+      <div class="tablewrap"><table id="tabHist"></table></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  const D = window.DONNEES;
+  if (!D || !D.pieces) { document.getElementById("noData").hidden = false; document.getElementById("app").hidden = true; return; }
+
+  const GPO = D.grammes_par_once || 31.1034768;
+  const $ = (id) => document.getElementById(id);
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  const eur = (v, dec) => v == null || isNaN(v) ? "–" : v.toLocaleString("fr-FR", { minimumFractionDigits: dec ?? 2, maximumFractionDigits: dec ?? 2 }) + " €";
+  const pct = (v, signe = true) => v == null || isNaN(v) ? "–" : (signe && v > 0 ? "+" : "") + (v * 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " %";
+  const dfr = (d) => d.split("-").reverse().join("/");
+  const estWeekend = (d) => { const j = new Date(d + "T12:00:00").getDay(); return j === 0 || j === 6; };
+
+  // ---------- état (mémorisé localement)
+  const defaut = { serie: "12", type: "cpr", periode: "1A", mm1: 20, mm2: 50, mm3: 200, mmType: "SMA", boll: false, rsi: true };
+  let S = Object.assign({}, defaut);
+  try { Object.assign(S, JSON.parse(localStorage.getItem("suiviOr") || "{}")); } catch (e) {}
+  const sauver = () => { try { localStorage.setItem("suiviOr", JSON.stringify(S)); } catch (e) {} };
+
+  // ---------- données
+  const spot = D.or_spot.map(r => ({ d: r[0], v: r[1] }));
+  const spotMap = new Map(spot.map(p => [p.d, p.v]));
+  const spotDates = spot.map(p => p.d);
+  function spotAu(d) {             // dernier cours de l'or connu à la date d (ou avant)
+    if (spotMap.has(d)) return spotMap.get(d);
+    let lo = 0, hi = spotDates.length - 1, r = -1;
+    while (lo <= hi) { const m = (lo + hi) >> 1; if (spotDates[m] <= d) { r = m; lo = m + 1; } else hi = m - 1; }
+    return r >= 0 ? spot[r].v : null;
+  }
+  const pieceParId = new Map(D.pieces.map(p => [String(p.id), p]));
+  const TYPES = { cpr: "Cotation CPR (marché)", achat: "Prix d'achat (site)", rachat: "Prix de rachat (site)" };
+
+  function serie(sel, type) {
+    if (sel === "or") return spot.slice();
+    const p = pieceParId.get(sel);
+    let pts;
+    if (type === "cpr") pts = p.cpr.map(r => ({ d: r[0], v: r[1] }));
+    else pts = p.site.map(r => ({ d: r[0], v: type === "achat" ? r[1] : r[2] }));
+    return pts.filter(x => x.v != null && !estWeekend(x.d));
+  }
+  const nomSerie = (sel) => sel === "or" ? "Once d'or" : pieceParId.get(sel).nom;
+
+  // ---------- indicateurs
+  function sma(v, n) { const o = Array(v.length).fill(null); let s = 0;
+    for (let i = 0; i < v.length; i++) { s += v[i]; if (i >= n) s -= v[i - n]; if (i >= n - 1) o[i] = s / n; } return o; }
+  function ema(v, n) { const o = Array(v.length).fill(null); if (v.length < n) return o; const k = 2 / (n + 1);
+    let e = v.slice(0, n).reduce((a, b) => a + b, 0) / n; o[n - 1] = e;
+    for (let i = n; i < v.length; i++) { e = v[i] * k + e * (1 - k); o[i] = e; } return o; }
+  const mm = (v, n) => S.mmType === "EMA" ? ema(v, n) : sma(v, n);
+  function bollinger(v, n = 20, k = 2) { const m = sma(v, n), hi = [], lo = [];
+    for (let i = 0; i < v.length; i++) { if (m[i] == null) { hi.push(null); lo.push(null); continue; }
+      let s = 0; for (let j = i - n + 1; j <= i; j++) s += (v[j] - m[i]) ** 2; const sd = Math.sqrt(s / n);
+      hi.push(m[i] + k * sd); lo.push(m[i] - k * sd); } return { hi, lo }; }
+  function rsi(v, n = 14) { const o = Array(v.length).fill(null); if (v.length <= n) return o;
+    let g = 0, l = 0; for (let i = 1; i <= n; i++) { const d = v[i] - v[i - 1]; if (d > 0) g += d; else l -= d; }
+    g /= n; l /= n; o[n] = l === 0 ? 100 : 100 - 100 / (1 + g / l);
+    for (let i = n + 1; i < v.length; i++) { const d = v[i] - v[i - 1];
+      g = (g * (n - 1) + Math.max(d, 0)) / n; l = (l * (n - 1) + Math.max(-d, 0)) / n;
+      o[i] = l === 0 ? 100 : 100 - 100 / (1 + g / l); } return o; }
+
+  const PERIODES = { "1M": 1, "3M": 3, "6M": 6, "1A": 12, "3A": 36, "5A": 60, "Tout": null };
+  function debutPeriode(derniere) {
+    const m = PERIODES[S.periode]; if (!m) return "0000";
+    const d = new Date(derniere + "T12:00:00"); d.setMonth(d.getMonth() - m); return d.toISOString().slice(0, 10);
+  }
+
+  // ---------- contrôles
+  const selSerie = $("selSerie");
+  D.pieces.forEach(p => selSerie.add(new Option(p.nom, String(p.id))));
+  selSerie.add(new Option("Once d'or (€/oz)", "or"));
+  const segP = $("segPeriode");
+  Object.keys(PERIODES).forEach(k => { const b = document.createElement("button"); b.textContent = k; b.dataset.v = k; segP.appendChild(b); });
+  const segM = $("segMM");
+  [["SMA", "Simple"], ["EMA", "Exponentielle"]].forEach(([v, t]) => { const b = document.createElement("button"); b.textContent = t; b.dataset.v = v; segM.appendChild(b); });
+
+  function majTypes() {
+    const sT = $("selType"); sT.innerHTML = "";
+    if (S.serie === "or") { sT.add(new Option("Cours (€/oz)", "cpr")); sT.disabled = true; S.type = "cpr"; return; }
+    sT.disabled = false; Object.entries(TYPES).forEach(([k, t]) => sT.add(new Option(t, k))); sT.value = S.type;
+  }
+  function syncControles() {
+    selSerie.value = S.serie; majTypes();
+    $("mm1").value = S.mm1; $("mm2").value = S.mm2; $("mm3").value = S.mm3;
+    $("chkBoll").checked = S.boll; $("chkRsi").checked = S.rsi;
+    segP.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === S.periode));
+    segM.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === S.mmType));
+  }
+  selSerie.onchange = () => { S.serie = selSerie.value; if (S.serie !== "or" && !S.type) S.type = "cpr"; maj(); };
+  $("selType").onchange = (e) => { S.type = e.target.value; maj(); };
+  ["mm1", "mm2", "mm3"].forEach(id => $(id).onchange = (e) => { const n = Math.max(2, Math.min(400, parseInt(e.target.value) || defaut[id])); S[id] = n; maj(); });
+  $("chkBoll").onchange = (e) => { S.boll = e.target.checked; maj(); };
+  $("chkRsi").onchange = (e) => { S.rsi = e.target.checked; maj(); };
+  segP.onclick = (e) => { if (e.target.dataset.v) { S.periode = e.target.dataset.v; maj(); } };
+  segM.onclick = (e) => { if (e.target.dataset.v) { S.mmType = e.target.dataset.v; maj(); } };
+
+  // ---------- mise en page Plotly
+  function layoutBase(extra) {
+    const ink2 = css("--ink-2"), grid = css("--grid"), axis = css("--axis");
+    return Object.assign({
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+      font: { family: 'system-ui, -apple-system, "Segoe UI", sans-serif', size: 12, color: ink2 },
+      margin: { l: 64, r: 16, t: 8, b: 36 }, hovermode: "x unified",
+      hoverlabel: { bgcolor: css("--surface"), bordercolor: axis, font: { color: css("--ink") } },
+      xaxis: { gridcolor: grid, linecolor: axis, showspikes: true, spikemode: "across", spikethickness: 1, spikecolor: axis, spikedash: "solid", type: "date", hoverformat: "%d/%m/%Y" },
+      yaxis: { gridcolor: grid, linecolor: axis, zeroline: false, tickformat: ",.0f", separatethousands: true },
+      legend: { orientation: "h", y: 1.02, yanchor: "bottom", x: 0, font: { color: ink2 } },
+      separators: ", ",
+    }, extra || {});
+  }
+  const CFG = { displaylogo: false, responsive: true, locale: "fr", modeBarButtonsToRemove: ["lasso2d", "select2d", "autoScale2d"] };
+  const ligne = (x, y, name, color, w = 2, extra) => Object.assign({ x, y, name, type: "scatter", mode: "lines", line: { color, width: w }, hovertemplate: "%{y:,.2f}<extra>" + name + "</extra>" }, extra || {});
+
+  // ---------- rendu
+  function maj() {
+    sauver(); syncControles();
+    const pts = serie(S.serie, S.type);
+    const nom = nomSerie(S.serie);
+    const libType = S.serie === "or" ? "€/oz (Yahoo Finance, contrat COMEX converti en €)" : TYPES[S.type];
+    $("titrePrincipal").textContent = nom + " — " + (S.serie === "or" ? "cours en €/oz" : TYPES[S.type]);
+    if (pts.length === 0) {
+      $("sousTitrePrincipal").textContent = "Pas encore de données pour cette série.";
+      Plotly.purge("chMain"); Plotly.purge("chRsi"); $("tiles").innerHTML = ""; $("tabHist").innerHTML = ""; renduAnnexes(); return;
+    }
+    const v = pts.map(p => p.v), d = pts.map(p => p.d);
+    const m1 = mm(v, S.mm1), m2 = mm(v, S.mm2), m3 = mm(v, S.mm3);
+    const R = rsi(v, 14), B = bollinger(v, 20, 2);
+    const debut = debutPeriode(d[d.length - 1]);
+    const i0 = Math.max(0, d.findIndex(x => x >= debut));
+    const cut = (a) => a.slice(i0);
+    const X = cut(d);
+    const lbl = S.mmType === "EMA" ? "MME" : "MM";
+    $("sousTitrePrincipal").textContent = libType + " · " + pts.length + " séances disponibles, du " + dfr(d[0]) + " au " + dfr(d[d.length - 1]) +
+      (pts.length < S.mm3 ? " · historique encore trop court pour la " + lbl + S.mm3 : "");
+
+    const traces = [];
+    if (S.boll) {
+      traces.push(ligne(X, cut(B.hi), "Bollinger haut", "rgba(0,0,0,0)", 0, { showlegend: false, hoverinfo: "skip", hovertemplate: null }));
+      traces.push(ligne(X, cut(B.lo), "Bollinger (20, 2σ)", "rgba(0,0,0,0)", 0, { fill: "tonexty", fillcolor: css("--band"), hoverinfo: "skip", hovertemplate: null }));
+    }
+    traces.push(ligne(X, cut(v), nom, css("--s1"), 2));
+    traces.push(ligne(X, cut(m1), lbl + S.mm1, css("--s2"), 1.5));
+    traces.push(ligne(X, cut(m2), lbl + S.mm2, css("--s3"), 1.5));
+    traces.push(ligne(X, cut(m3), lbl + S.mm3, css("--s4"), 1.5));
+    Plotly.react("chMain", traces, layoutBase({ yaxis: Object.assign(layoutBase().yaxis, { ticksuffix: " €" }) }), CFG);
+
+    $("chRsi").style.display = S.rsi ? "" : "none";
+    if (S.rsi) {
+      const lay = layoutBase({ margin: { l: 64, r: 16, t: 4, b: 30 }, showlegend: false,
+        yaxis: Object.assign(layoutBase().yaxis, { range: [0, 100], tickvals: [30, 50, 70], title: { text: "RSI 14", font: { size: 11 } } }),
+        shapes: [70, 30].map(y => ({ type: "line", xref: "paper", x0: 0, x1: 1, y0: y, y1: y, line: { color: css("--muted"), width: 1, dash: "dot" } })) });
+      Plotly.react("chRsi", [ligne(X, cut(R), "RSI 14", css("--s5"), 1.5)], lay, CFG);
+    }
+
+    // Tuiles
+    const n = v.length - 1, last = v[n];
+    const varAt = (k) => n - k >= 0 ? last / v[n - k] - 1 : null;
+    const cls = (x) => x == null ? "" : x > 0 ? "up" : x < 0 ? "down" : "flat";
+    const fleche = (x) => x == null ? "" : x > 0 ? "▲ " : x < 0 ? "▼ " : "◆ ";
+    const t = [];
+    t.push(tuile("Dernier cours", eur(last), "au " + dfr(d[n])));
+    [["Var. 1 séance", 1], ["Var. 1 mois", 21], ["Var. 1 an", 252]].forEach(([k, j]) => { const x = varAt(j); t.push(tuile(k, `<span class="${cls(x)}">${fleche(x)}${pct(x)}</span>`, x == null ? "historique insuffisant" : "vs " + dfr(d[n - j]))); });
+    if (S.serie !== "or") {
+      const p = pieceParId.get(S.serie), s = spotAu(d[n]);
+      const prime = s ? last / (s / GPO * p.or_fin_g) - 1 : null;
+      t.push(tuile("Prime sur l'or", pct(prime, false), "or fin " + p.or_fin_g.toLocaleString("fr-FR") + " g"));
+    }
+    const tend = tendance(v, m1, m2, m3);
+    t.push(tuile("Tendance", `<span class="${tend.cls}">${tend.icone} ${tend.label}</span>`, tend.detail));
+    const r = R[n]; t.push(tuile("RSI 14", r == null ? "–" : r.toFixed(0), r == null ? "" : r >= 70 ? "zone de surachat" : r <= 30 ? "zone de survente" : "zone neutre"));
+    $("tiles").innerHTML = t.join("");
+
+    // Tableau
+    $("tabSub").textContent = nom + " — " + libType;
+    let h = `<tr><th>Date</th><th>Cours</th><th>Var.</th><th>${lbl}${S.mm1}</th><th>${lbl}${S.mm2}</th><th>${lbl}${S.mm3}</th><th>RSI</th></tr>`;
+    for (let i = n; i >= Math.max(0, n - 14); i--) {
+      const x = i > 0 ? v[i] / v[i - 1] - 1 : null;
+      h += `<tr><td>${dfr(d[i])}</td><td>${eur(v[i])}</td><td class="${cls(x)}">${pct(x)}</td><td>${eur(m1[i])}</td><td>${eur(m2[i])}</td><td>${eur(m3[i])}</td><td>${R[i] == null ? "–" : R[i].toFixed(0)}</td></tr>`;
+    }
+    $("tabHist").innerHTML = h;
+    renduAnnexes();
+  }
+
+  function tuile(k, v, d) { return `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d || ""}</div></div>`; }
+
+  function tendance(v, m1, m2, m3) {
+    const n = v.length - 1, c = v[n], a = m1[n], b = m2[n], l = m3[n];
+    if (b == null) return { cls: "flat", icone: "◆", label: "Indéterminée", detail: "historique trop court" };
+    let res;
+    if (l != null) {
+      if (c > b && b > l) res = { cls: "up", icone: "▲", label: "Haussière" };
+      else if (c < b && b < l) res = { cls: "down", icone: "▼", label: "Baissière" };
+      else res = { cls: "flat", icone: "◆", label: "Neutre" };
+    } else {
+      res = c > b && a > b ? { cls: "up", icone: "▲", label: "Haussière (court terme)" }
+        : c < b && a < b ? { cls: "down", icone: "▼", label: "Baissière (court terme)" }
+        : { cls: "flat", icone: "◆", label: "Neutre" };
+    }
+    // dernier croisement MM courte / MM moyenne
+    let croix = "";
+    for (let i = n; i > 0; i--) {
+      if (m1[i] == null || m2[i] == null || m1[i - 1] == null || m2[i - 1] == null) break;
+      const avant = m1[i - 1] - m2[i - 1], apres = m1[i] - m2[i];
+      if (avant <= 0 && apres > 0) { croix = "croisement haussier MM courte/moyenne le " + dfr(serie(S.serie, S.type)[i].d); break; }
+      if (avant >= 0 && apres < 0) { croix = "croisement baissier MM courte/moyenne le " + dfr(serie(S.serie, S.type)[i].d); break; }
+    }
+    res.detail = croix || (l != null ? "cours vs MM moyenne vs MM longue" : "MM longue indisponible");
+    return res;
+  }
+
+  function renduAnnexes() {
+    const cols = ["--s1", "--s2", "--s3", "--s4", "--s5"].map(css);
+    // Primes
+    const tp = D.pieces.map((p, k) => {
+      const pts = p.cpr.filter(r => !estWeekend(r[0]));
+      const x = [], y = [];
+      pts.forEach(r => { const s = spotAu(r[0]); if (s) { x.push(r[0]); y.push(r[1] / (s / GPO * p.or_fin_g) - 1); } });
+      return ligne(x, y, p.nom, cols[k], 1.5, { hovertemplate: "%{y:.1%}<extra>" + p.nom + "</extra>" });
+    });
+    Plotly.react("chPrime", tp, layoutBase({ yaxis: Object.assign(layoutBase().yaxis, { tickformat: ".0%" }) }), CFG);
+
+    // Base 100 sur la période
+    const toutes = D.pieces.map(p => ({ nom: p.nom, pts: p.cpr.filter(r => !estWeekend(r[0])).map(r => ({ d: r[0], v: r[1] })) }));
+    toutes.push({ nom: "Once d'or", pts: spot });
+    const derniere = toutes.reduce((m, s) => s.pts.length && s.pts[s.pts.length - 1].d > m ? s.pts[s.pts.length - 1].d : m, "0");
+    const deb = debutPeriode(derniere);
+    const tb = toutes.map((s, k) => {
+      const pts = s.pts.filter(p => p.d >= deb); if (!pts.length) return null;
+      const b = pts[0].v;
+      return ligne(pts.map(p => p.d), pts.map(p => p.v / b * 100), s.nom, cols[k], k === 4 ? 2.5 : 1.5, { hovertemplate: "%{y:.1f}<extra>" + s.nom + "</extra>" });
+    }).filter(Boolean);
+    Plotly.react("chBase", tb, layoutBase({ yaxis: Object.assign(layoutBase().yaxis, { tickformat: ".0f" }) }), CFG);
+  }
+
+  // ---------- tableau du jour
+  function tableauJour() {
+    const dates = D.pieces.flatMap(p => p.site.map(r => r[0])).sort();
+    const jour = dates[dates.length - 1];
+    const ss = D.or_spot_site.find(r => r[0] === jour);
+    const s = ss ? ss[1] : spotAu(jour);
+    $("jourSub").textContent = jour ? "Relevé du " + dfr(jour) + " · once d'or affichée : " + eur(s) + "/oz" : "Pas encore de relevé.";
+    $("meta").textContent = "Données générées le " + new Date(D.genere).toLocaleString("fr-FR");
+    let h = "<tr><th>Pièce</th><th>Or fin</th><th>Valeur or</th><th>Prix d'achat</th><th>Prime achat</th><th>Prix de rachat</th><th>Écart achat/rachat</th><th>Cotation CPR</th></tr>";
+    D.pieces.forEach(p => {
+      const r = p.site.find(x => x[0] === jour) || [];
+      const c = p.cpr[p.cpr.length - 1];
+      const valeur = s ? s / GPO * p.or_fin_g : null;
+      h += `<tr><td>${p.nom}</td><td>${p.or_fin_g.toLocaleString("fr-FR")} g</td><td>${eur(valeur)}</td><td><b>${eur(r[1])}</b></td><td>${valeur && r[1] ? pct(r[1] / valeur - 1, false) : "–"}</td><td>${eur(r[2])}</td><td>${r[1] && r[2] ? pct(r[1] / r[2] - 1, false) : "–"}</td><td>${c ? eur(c[1]) + ' <span class="note">(' + dfr(c[0]) + ")</span>" : "–"}</td></tr>`;
+    });
+    $("tabJour").innerHTML = h;
+  }
+
+  tableauJour();
+  maj();
+  // Re-rendu si le thème clair/sombre change
+  if (window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener("change", maj);
+})();
+</script>
+</body>
+</html>
