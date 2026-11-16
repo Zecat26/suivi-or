@@ -2,9 +2,13 @@ name: Collecte quotidienne
 
 on:
   schedule:
-    # Du lundi au vendredi à 17h00 UTC (18h00 heure de Paris en hiver, 19h00 en été).
-    # GitHub peut décaler l'exécution de quelques minutes à une heure selon la charge.
-    - cron: "0 17 * * 1-5"
+    # Du lundi au vendredi, heures UTC (Paris = UTC+1 en hiver, UTC+2 en été).
+    # GitHub peut retarder ou même sauter une exécution programmée quand ses serveurs sont chargés,
+    # surtout à l'heure pile : on évite donc les minutes rondes et on prévoit deux créneaux de secours.
+    # Plusieurs collectes le même jour ne créent pas de doublon (le dernier relevé du jour remplace le précédent).
+    - cron: "17 17 * * 1-5"   # principal : 18h17 Paris (hiver)
+    - cron: "43 19 * * 1-5"   # secours   : 20h43 Paris (hiver)
+    - cron: "29 21 * * 1-5"   # secours   : 22h29 Paris (hiver)
   workflow_dispatch: {}   # bouton "Run workflow" pour lancer une collecte à la main
 
 permissions:
