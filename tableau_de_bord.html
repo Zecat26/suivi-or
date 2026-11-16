@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Suivi Or</title>
 <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
-<script src="data/donnees.js"></script>
+<script>
+  // Charge toujours la dernière version des données (évite la copie en cache du navigateur)
+  document.write('<script src="data/donnees.js?v=' + Date.now() + '"><\/script>');
+</script>
 <style>
 :root {
   color-scheme: light;
