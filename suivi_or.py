@@ -2,10 +2,11 @@
 Suivi des cours de l'or et des pièces d'or d'investissement.
 
 Collecte quotidienne (bibliothèque standard Python uniquement) :
-  1. Prix d'achat / de rachat de toutes les pièces de la page
+  1. Prix d'achat / de rachat de tous les produits des pages
      https://www.achat-or-et-argent.fr/or/2/pieces-d-or-d-investissement
+     https://www.achat-or-et-argent.fr/or/3/lingots-et-lingotins
      + cours de l'once d'or affiché par le site (€/oz et $/oz)
-  2. Cotation CPR (1 an glissant) des pièces suivies, via le graphique du site
+  2. Cotation CPR (1 an glissant) des pièces et lingots suivis, via le graphique du site
   3. Cours de l'once d'or (Yahoo Finance : GC=F / EURUSD=X), historique 10 ans au 1er lancement
 
 Les données sont stockées dans data/cours.db (SQLite) puis exportées dans
@@ -37,19 +38,24 @@ BASE = DOSSIER_DATA / "cours.db"
 EXPORT_JS = DOSSIER_DATA / "donnees.js"
 
 SITE = "https://www.achat-or-et-argent.fr"
-URL_LISTE = SITE + "/or/2/pieces-d-or-d-investissement"
+URL_PIECES = SITE + "/or/2/pieces-d-or-d-investissement"
+URL_LINGOTS = SITE + "/or/3/lingots-et-lingotins"
+URL_LISTES = [URL_PIECES, URL_LINGOTS]
 URL_CPR = SITE + "/getCoursChart"
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/130.0 Safari/537.36")
 
 GRAMMES_PAR_ONCE = 31.1034768
 
-# Pièces suivies : identifiant produit du site -> nom court, or fin (g)
+# Produits suivis : identifiant produit du site -> nom court, or fin (g), type
 PIECES = {
-    17: {"nom": "20 Francs Marianne", "or_fin_g": 5.806},
-    14: {"nom": "Souverain", "or_fin_g": 7.3224},
-    11: {"nom": "50 Pesos", "or_fin_g": 37.4991},
-    12: {"nom": "Krugerrand", "or_fin_g": 31.1035},
+    17: {"nom": "20 Francs Marianne", "or_fin_g": 5.806, "type": "piece"},
+    14: {"nom": "Souverain", "or_fin_g": 7.3224, "type": "piece"},
+    11: {"nom": "50 Pesos", "or_fin_g": 37.4991, "type": "piece"},
+    12: {"nom": "Krugerrand", "or_fin_g": 31.1035, "type": "piece"},
+    38: {"nom": "Lingot 1 kg", "or_fin_g": 999.9, "type": "lingot"},
+    3553: {"nom": "Lingotin 50 g", "or_fin_g": 49.995, "type": "lingot"},
+    3552: {"nom": "Lingotin 20 g", "or_fin_g": 19.998, "type": "lingot"},
 }
 
 log = logging.getLogger("suivi_or")
@@ -109,12 +115,24 @@ def connexion() -> sqlite3.Connection:
 
 # --------------------------------------------------------------------------- collectes
 
-def collecte_site(cx: sqlite3.Connection) -> None:
-    html = http(URL_LISTE)
+def _produits_page(html: str, url: str) -> list[dict]:
     m = re.search(r"products\s*:\s*(\[\[.*?\]\])\s*,", html, re.S)
     if not m:
-        raise RuntimeError("Bloc 'products' introuvable : la structure de la page a changé.")
-    produits = json.loads(m.group(1))[0]
+        raise RuntimeError(f"Bloc 'products' introuvable dans {url} : la structure de la page a changé.")
+    return json.loads(m.group(1))[0]
+
+
+def collecte_site(cx: sqlite3.Connection) -> None:
+    produits, vus, html = [], set(), ""
+    for n, url in enumerate(URL_LISTES):
+        if n:
+            time.sleep(1.5)  # rester discret
+        page = http(url)
+        html = html or page  # le cours de l'once est lu sur la première page
+        for p in _produits_page(page, url):
+            if p["id"] not in vus:
+                vus.add(p["id"])
+                produits.append(p)
 
     aujourd_hui = dt.date.today().isoformat()
     maintenant = dt.datetime.now().isoformat(timespec="seconds")
@@ -125,7 +143,7 @@ def collecte_site(cx: sqlite3.Connection) -> None:
     trouves = {p["id"] for p in produits}
     for pid, info in PIECES.items():
         if pid not in trouves:
-            log.error("Pièce %s (id %d) absente de la page !", info["nom"], pid)
+            log.error("Produit %s (id %d) absent des pages !", info["nom"], pid)
     log.info("Site : %d produits enregistrés pour le %s", len(lignes), aujourd_hui)
 
     eur = re.search(r"Once d.or ([\d\s  .,]+?)\s*€/oz", html)
@@ -143,7 +161,7 @@ def collecte_cpr(cx: sqlite3.Connection) -> None:
     for pid, info in PIECES.items():
         try:
             brut = http(URL_CPR, {"idmetal": pid, "duree": 1, "type": "YEAR", "sorte": 1},
-                        referer=URL_LISTE)
+                        referer=URL_PIECES)
             points = json.loads(brut) or []
             lignes = [(p["ladate"], pid, float(p["valeur"])) for p in points
                       if p.get("ladate") and p.get("valeur") not in (None, "")]
@@ -200,7 +218,7 @@ def export(cx: sqlite3.Connection) -> None:
         cpr = cx.execute("SELECT date, valeur FROM cotation_cpr "
                          "WHERE produit_id=? ORDER BY date", (pid,)).fetchall()
         pieces.append({"id": pid, "nom": info["nom"], "or_fin_g": info["or_fin_g"],
-                       "site": site, "cpr": cpr})
+                       "type": info["type"], "site": site, "cpr": cpr})
     spot = cx.execute("SELECT date, eur_oz, usd_oz FROM or_spot WHERE source='yahoo' "
                       "ORDER BY date").fetchall()
     spot_site = cx.execute("SELECT date, eur_oz, usd_oz FROM or_spot WHERE source='site' "

@@ -1,6 +1,6 @@
 # Suivi Or & pièces d'investissement
 
-Outil personnel de suivi des cours : 20 Francs Marianne, Souverain, 50 Pesos, Krugerrand et once d'or.
+Outil personnel de suivi des cours : 20 Francs Marianne, Souverain, 50 Pesos, Krugerrand, lingot 1 kg, lingotins 50 g et 20 g, et once d'or.
 
 ## Utilisation au quotidien
 

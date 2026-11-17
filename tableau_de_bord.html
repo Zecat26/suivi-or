@@ -74,6 +74,7 @@ th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--gri
 th:first-child, td:first-child { text-align: left; }
 th { color: var(--muted); font-weight: 500; font-size: 12px; }
 .tablewrap { overflow-x: auto; }
+tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; padding-top: 12px; }
 .note { color: var(--muted); font-size: 12px; margin-top: 8px; }
 .empty { padding: 40px; text-align: center; color: var(--ink-2); }
 </style>
@@ -122,12 +123,12 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; }
 
     <div class="grid2">
       <div class="card">
-        <h2>Prime des pièces sur l'or (cotation CPR)</h2>
-        <p class="sub">% au-dessus de la valeur de l'or fin contenu, lissé sur 10 séances. Une prime basse est historiquement plus favorable à l'achat.</p>
+        <h2 id="titrePrime">Prime sur l'or (cotation CPR)</h2>
+        <p class="sub">% au-dessus de la valeur de l'or fin contenu, lissé sur 10 séances. Une prime basse est historiquement plus favorable à l'achat. Les deux graphiques comparent les produits de la même famille que la série choisie. La cotation CPR est proche d'un prix de rachat et l'or de référence est le contrat à terme COMEX : pour le lingot 1 kg, la prime peut donc apparaître légèrement négative ; c'est son évolution qui compte.</p>
         <div id="chPrime" class="chart" style="height:320px"></div>
       </div>
       <div class="card">
-        <h2>Performance comparée (base 100)</h2>
+        <h2 id="titreBase">Performance comparée (base 100)</h2>
         <p class="sub">Évolution relative sur la période choisie, toutes séries ramenées à 100 au départ.</p>
         <div id="chBase" class="chart" style="height:320px"></div>
       </div>
@@ -210,8 +211,15 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; }
 
   // ---------- contrôles
   const selSerie = $("selSerie");
-  D.pieces.forEach(p => selSerie.add(new Option(p.nom, String(p.id))));
-  selSerie.add(new Option("Once d'or (€/oz)", "or"));
+  const FAMILLES = { piece: "Pièces", lingot: "Lingots" };
+  const typeDe = (p) => p.type || "piece";
+  Object.entries(FAMILLES).forEach(([t, lib]) => {
+    const g = document.createElement("optgroup"); g.label = lib;
+    D.pieces.filter(p => typeDe(p) === t).forEach(p => g.appendChild(new Option(p.nom, String(p.id))));
+    if (g.children.length) selSerie.appendChild(g);
+  });
+  const gOr = document.createElement("optgroup"); gOr.label = "Or";
+  gOr.appendChild(new Option("Once d'or (€/oz)", "or")); selSerie.appendChild(gOr);
   const segP = $("segPeriode");
   Object.keys(PERIODES).forEach(k => { const b = document.createElement("button"); b.textContent = k; b.dataset.v = k; segP.appendChild(b); });
   const segM = $("segMM");
@@ -356,17 +364,23 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; }
   function renduAnnexes() {
     // Styles lisibles par les daltoniens (rouge-vert) : 2 couleurs (bleu / orange) × styles de trait, + noir/blanc pour l'or
     const STYLES = [
-      { c: css("--s1"), dash: "solid", w: 2 },     // 20 Francs Marianne : bleu plein
-      { c: css("--s2"), dash: "solid", w: 2 },     // Souverain : orange plein
-      { c: css("--s1"), dash: "dash", w: 2 },      // 50 Pesos : bleu tirets
-      { c: css("--s2"), dash: "dot", w: 2.4 },     // Krugerrand : orange pointillés
-      { c: css("--ink"), dash: "solid", w: 2.6 },  // Once d'or : noir/blanc épais
+      { c: css("--s1"), dash: "solid", w: 2 },     // 1er produit : bleu plein
+      { c: css("--s2"), dash: "solid", w: 2 },     // 2e : orange plein
+      { c: css("--s1"), dash: "dash", w: 2 },      // 3e : bleu tirets
+      { c: css("--s2"), dash: "dot", w: 2.4 },     // 4e : orange pointillés
     ];
-    const style = (k) => ({ line: { color: STYLES[k].c, width: STYLES[k].w, dash: STYLES[k].dash } });
+    const STYLE_OR = { c: css("--ink"), dash: "solid", w: 2.6 };  // Once d'or : noir/blanc épais
+    const style = (k) => { const s = k < 0 ? STYLE_OR : STYLES[k % STYLES.length]; return { line: { color: s.c, width: s.w, dash: s.dash } }; };
+
+    // Famille comparée = celle de la série choisie (pièces par défaut)
+    const famille = S.serie !== "or" && pieceParId.get(S.serie) ? typeDe(pieceParId.get(S.serie)) : "piece";
+    const liste = D.pieces.filter(p => typeDe(p) === famille);
+    $("titrePrime").textContent = "Prime des " + FAMILLES[famille].toLowerCase() + " sur l'or (cotation CPR)";
+    $("titreBase").textContent = "Performance comparée des " + FAMILLES[famille].toLowerCase() + " (base 100)";
 
     // Primes (lissées sur 10 séances)
     const LISSAGE = 10;
-    const tp = D.pieces.map((p, k) => {
+    const tp = liste.map((p, k) => {
       const pts = p.cpr.filter(r => !estWeekend(r[0]));
       const x = [], y = [];
       pts.forEach(r => { const s = spotAu(r[0]); if (s) { x.push(r[0]); y.push(r[1] / (s / GPO * p.or_fin_g) - 1); } });
@@ -376,14 +390,14 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; }
     Plotly.react("chPrime", tp, layoutBase({ yaxis: Object.assign(layoutBase().yaxis, { tickformat: ".0%" }) }), CFG);
 
     // Base 100 sur la période
-    const toutes = D.pieces.map(p => ({ nom: p.nom, pts: p.cpr.filter(r => !estWeekend(r[0])).map(r => ({ d: r[0], v: r[1] })) }));
-    toutes.push({ nom: "Once d'or", pts: spot });
+    const toutes = liste.map((p, k) => ({ nom: p.nom, k, pts: p.cpr.filter(r => !estWeekend(r[0])).map(r => ({ d: r[0], v: r[1] })) }));
+    toutes.push({ nom: "Once d'or", k: -1, pts: spot });
     const derniere = toutes.reduce((m, s) => s.pts.length && s.pts[s.pts.length - 1].d > m ? s.pts[s.pts.length - 1].d : m, "0");
     const deb = debutPeriode(derniere);
-    const tb = toutes.map((s, k) => {
+    const tb = toutes.map((s) => {
       const pts = s.pts.filter(p => p.d >= deb); if (!pts.length) return null;
       const b = pts[0].v;
-      return ligne(pts.map(p => p.d), pts.map(p => p.v / b * 100), s.nom, null, 0, Object.assign(style(k), { hovertemplate: "%{y:.1f}<extra>" + s.nom + "</extra>" }));
+      return ligne(pts.map(p => p.d), pts.map(p => p.v / b * 100), s.nom, null, 0, Object.assign(style(s.k), { hovertemplate: "%{y:.1f}<extra>" + s.nom + "</extra>" }));
     }).filter(Boolean);
     Plotly.react("chBase", tb, layoutBase({ yaxis: Object.assign(layoutBase().yaxis, { tickformat: ".0f" }) }), CFG);
   }
@@ -396,8 +410,10 @@ th { color: var(--muted); font-weight: 500; font-size: 12px; }
     const s = ss ? ss[1] : spotAu(jour);
     $("jourSub").textContent = jour ? "Relevé du " + dfr(jour) + " · once d'or affichée : " + eur(s) + "/oz" : "Pas encore de relevé.";
     $("meta").textContent = "Données générées le " + new Date(D.genere).toLocaleString("fr-FR");
-    let h = "<tr><th>Pièce</th><th>Or fin</th><th>Valeur or</th><th>Prix d'achat</th><th>Prime achat</th><th>Prix de rachat</th><th>Écart achat/rachat</th><th>Cotation CPR</th></tr>";
+    let h = "<tr><th>Produit</th><th>Or fin</th><th>Valeur or</th><th>Prix d'achat</th><th>Prime achat</th><th>Prix de rachat</th><th>Écart achat/rachat</th><th>Cotation CPR</th></tr>";
+    let familleCourante = null;
     D.pieces.forEach(p => {
+      if (typeDe(p) !== familleCourante) { familleCourante = typeDe(p); h += `<tr class="groupe"><td colspan="8">${FAMILLES[familleCourante]}</td></tr>`; }
       const r = p.site.find(x => x[0] === jour) || [];
       const c = p.cpr[p.cpr.length - 1];
       const valeur = s ? s / GPO * p.or_fin_g : null;
