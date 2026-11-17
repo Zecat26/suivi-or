@@ -20,6 +20,7 @@ Usage :
 
 from __future__ import annotations
 
+import csv
 import datetime as dt
 import json
 import logging
@@ -36,6 +37,8 @@ DOSSIER_DATA = RACINE / "data"
 DOSSIER_LOGS = RACINE / "logs"
 BASE = DOSSIER_DATA / "cours.db"
 EXPORT_JS = DOSSIER_DATA / "donnees.js"
+DOSSIER_CSV = DOSSIER_DATA / "csv"      # virgules, décimales à point : affichage GitHub, Python, etc.
+DOSSIER_EXCEL = DOSSIER_DATA / "excel"  # points-virgules, décimales à virgule : Excel en français
 
 SITE = "https://www.achat-or-et-argent.fr"
 URL_PIECES = SITE + "/or/2/pieces-d-or-d-investissement"
@@ -233,6 +236,52 @@ def export(cx: sqlite3.Connection) -> None:
     EXPORT_JS.write_text("window.DONNEES = " + json.dumps(donnees, ensure_ascii=False) + ";\n",
                          encoding="utf-8")
     log.info("Export : %s", EXPORT_JS)
+    export_csv(cx)
+
+
+def _ecrire_csv(nom: str, entetes: list[str], lignes: list[tuple]) -> None:
+    """Écrit le même tableau en 2 formats : CSV standard (data/csv) et CSV Excel français (data/excel)."""
+    DOSSIER_CSV.mkdir(exist_ok=True)
+    DOSSIER_EXCEL.mkdir(exist_ok=True)
+    with open(DOSSIER_CSV / nom, "w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(entetes)
+        w.writerows(["" if v is None else round(v, 2) if isinstance(v, float) else v for v in l] for l in lignes)
+
+    def fr(v):
+        if v is None:
+            return ""
+        if isinstance(v, float):
+            return f"{v:.2f}".replace(".", ",")
+        return v
+    with open(DOSSIER_EXCEL / nom, "w", newline="", encoding="utf-8-sig") as f:
+        w = csv.writer(f, delimiter=";")
+        w.writerow(entetes)
+        w.writerows([fr(v) for v in l] for l in lignes)
+
+
+def export_csv(cx: sqlite3.Connection) -> None:
+    familles = {pid: ("pièce" if i["type"] == "piece" else "lingot") for pid, i in PIECES.items()}
+    noms = {pid: i["nom"] for pid, i in PIECES.items()}
+
+    # 1. Prix du site : tous les produits relevés (suivis ou non), le plus récent en premier
+    lignes = [(d, pid, nom, familles.get(pid, ""), "oui" if pid in PIECES else "non", a, r)
+              for d, pid, nom, a, r in cx.execute(
+                  "SELECT date, produit_id, nom, prix_achat, prix_rachat FROM prix_site "
+                  "ORDER BY date DESC, produit_id IN (%s) DESC, nom" % ",".join(map(str, PIECES)))]
+    _ecrire_csv("prix_site.csv",
+                ["date", "id_produit", "produit", "famille", "suivi", "prix_achat_eur", "prix_rachat_eur"], lignes)
+
+    # 2. Cotation CPR des produits suivis
+    lignes = [(d, pid, noms[pid], familles[pid], v) for d, pid, v in cx.execute(
+        "SELECT date, produit_id, valeur FROM cotation_cpr ORDER BY date DESC, produit_id")
+        if pid in noms]
+    _ecrire_csv("cotation_cpr.csv", ["date", "id_produit", "produit", "famille", "cotation_eur"], lignes)
+
+    # 3. Once d'or
+    lignes = list(cx.execute("SELECT date, source, eur_oz, usd_oz FROM or_spot ORDER BY date DESC, source"))
+    _ecrire_csv("once_or.csv", ["date", "source", "eur_par_once", "usd_par_once"], lignes)
+    log.info("Export CSV : %s et %s", DOSSIER_CSV, DOSSIER_EXCEL)
 
 
 # --------------------------------------------------------------------------- main

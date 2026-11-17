@@ -24,6 +24,8 @@ depuis le passage à GitHub, pour éviter deux collectes concurrentes. Pour la r
 | `suivi_or.py` | Collecte (site + cotation CPR + once d'or Yahoo) → `data/cours.db`, puis export `data/donnees.js` |
 | `tableau_de_bord.html` | Graphiques, moyennes mobiles, Bollinger, RSI, tendance, primes, base 100 |
 | `installer_tache.ps1` | (Ré)installe la tâche planifiée |
+| `data/csv/*.csv` | Mêmes données en CSV standard (virgules) : consultables directement sur GitHub sous forme de tableau |
+| `data/excel/*.csv` | Mêmes données en CSV pour Excel en français (points-virgules, décimales à virgule) : ouverture par double-clic |
 | `data/cours.db` | Base SQLite : tables `prix_site`, `cotation_cpr`, `or_spot` (ouvrable avec DB Browser for SQLite, Excel via ODBC, Python/pandas…) |
 | `logs/collecte.log` | Journal des collectes (à consulter en cas de doute) |
 
