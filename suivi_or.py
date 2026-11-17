@@ -160,6 +160,35 @@ def collecte_site(cx: sqlite3.Connection) -> None:
         log.warning("Cours de l'once d'or non trouvé dans la page.")
 
 
+URL_FICHE = SITE + "/or/produit/{}"
+
+
+def collecte_fiches(cx: sqlite3.Connection) -> None:
+    """Prix des produits suivis lus sur leur fiche : 1er palier de quantité (1 à 9 pièces,
+    ou 1 à 4 selon le produit) et prix de rachat. Remplace, pour ces produits, le prix de la page liste."""
+    aujourd_hui = dt.date.today().isoformat()
+    for pid, info in PIECES.items():
+        time.sleep(1.5)  # rester discret
+        try:
+            h = http(URL_FICHE.format(pid), referer=URL_LISTES[0])
+            palier = re.search(r'<td class="left">.*?</i>(.*?)</td>\s*<td class="[^"]*right"[^>]*>'
+                               r'<span id="pa\w*">([\d\s .,]+)</span>', h, re.S)
+            rachat = re.search(r'id="pxVU"[^>]*value="([^"]+)"', h)
+            if not palier:
+                raise RuntimeError("tableau des prix par quantité introuvable")
+            achat = nombre_fr(palier.group(2))
+            vente = nombre_fr(rachat.group(1)) if rachat else None
+            nom = cx.execute("SELECT nom FROM prix_site WHERE date=? AND produit_id=?",
+                             (aujourd_hui, pid)).fetchone()
+            cx.execute("INSERT OR REPLACE INTO prix_site VALUES (?,?,?,?,?,?)",
+                       (aujourd_hui, pid, nom[0] if nom else info["nom"], achat, vente,
+                        dt.datetime.now().isoformat(timespec="seconds")))
+            log.info("Fiche %s : achat %s € (%s), rachat %s €", info["nom"], achat,
+                     re.sub(r"\s+", " ", palier.group(1)).strip(), vente)
+        except Exception as e:  # noqa: BLE001
+            log.error("Fiche %s : échec (%s) — prix de la page liste conservé", info["nom"], e)
+
+
 def collecte_cpr(cx: sqlite3.Connection) -> None:
     for pid, info in PIECES.items():
         try:
@@ -302,7 +331,7 @@ def main() -> int:
     erreurs = 0
     try:
         if "--export" not in args:
-            for etape in (collecte_site, collecte_cpr):
+            for etape in (collecte_site, collecte_fiches, collecte_cpr):
                 try:
                     etape(cx)
                     cx.commit()

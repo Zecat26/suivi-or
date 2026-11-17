@@ -31,7 +31,7 @@ depuis le passage à GitHub, pour éviter deux collectes concurrentes. Pour la r
 
 ## Les données
 
-- **Prix d'achat / de rachat** : prix unitaire du site (tranche 1 à 4 pièces) et prix auquel le site rachète. Historique construit jour après jour à partir du 15/11/2026.
+- **Prix d'achat / de rachat** : prix unitaire du 1er palier de quantité lu sur la fiche de chaque produit (« de 1 à 9 pièces », ou « de 1 à 4 » selon le produit) et prix auquel le site rachète. Historique construit jour après jour à partir du 15/11/2026 (jusqu'au 17/11 inclus, prix lus sur la page liste du site).
 - **Cotation CPR** : cotation de marché publiée par le site (graphique « Voir le graphique » des fiches produit). Le site en fournit 1 an glissant ;
   chaque collecte conserve les points, l'historique s'allonge donc au fil du temps.
 - **Once d'or (€/oz)** : contrat COMEX (Yahoo Finance, GC=F) converti en euros (EURUSD=X), historique de 10 ans. Écart constaté avec le cours affiché par le site < 0,1 %.
