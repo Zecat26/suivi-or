@@ -1,42 +1,42 @@
 date,id_produit,produit,famille,suivi,prix_achat_eur,prix_rachat_eur
 2026-11-17,17,20 Francs Marianne Coq,pièce,oui,689.0,645.0
-2026-11-17,11,50 Pesos Or,pièce,oui,4468.0,4118.0
-2026-11-17,12,Krugerrand,pièce,oui,3646.5,3409.0
-2026-11-17,38,Lingot 1Kg Or,lingot,oui,115204.0,110686.0
-2026-11-17,3552,Lingot 20g Or,lingot,oui,2372.0,2168.5
-2026-11-17,3553,Lingot 50g Or,lingot,oui,5834.0,5421.0
+2026-11-17,11,50 Pesos Or,pièce,oui,4469.0,4119.0
+2026-11-17,12,Krugerrand,pièce,oui,3647.5,3409.5
+2026-11-17,38,Lingot 1Kg Or,lingot,oui,115234.0,110714.0
+2026-11-17,3552,Lingot 20g Or,lingot,oui,2372.5,2169.0
+2026-11-17,3553,Lingot 50g Or,lingot,oui,5835.5,5422.5
 2026-11-17,14,Souverain,pièce,oui,877.5,810.0
 2026-11-17,4767,1 Ducat Or Francois-Joseph 1915,,non,428.0,384.5
-2026-11-17,13,10 Dollars US,,non,1802.0,1665.0
+2026-11-17,13,10 Dollars US,,non,1802.5,1665.0
 2026-11-17,18,10 Florins Or,,non,724.5,672.0
-2026-11-17,18860,10 Francs Marianne Coq,,non,394.0,327.5
-2026-11-17,32,10 Francs Napoléon,,non,380.5,320.0
-2026-11-17,19,20 Dollars US,,non,3603.5,3340.0
+2026-11-17,18860,10 Francs Marianne Coq,,non,394.0,328.0
+2026-11-17,32,10 Francs Napoléon,,non,381.0,320.0
+2026-11-17,19,20 Dollars US,,non,3604.5,3340.0
 2026-11-17,6,20 Francs Napoléon,,non,689.0,645.0
 2026-11-17,15,20 Francs Suisse,,non,695.5,645.0
 2026-11-17,44,20 Francs Tunisie,,non,702.0,643.0
 2026-11-17,34,20 Reichsmarks,,non,850.5,790.0
-2026-11-17,839,4 Ducats Or,,non,1684.0,1567.0
-2026-11-17,33,5 Dollars US Or,,non,935.0,835.0
+2026-11-17,839,4 Ducats Or,,non,1684.5,1567.0
+2026-11-17,33,5 Dollars US Or,,non,935.5,835.0
 2026-11-17,35,5 Roubles,,non,700.0,250.0
 2026-11-17,49,Demi Souverain,,non,447.0,405.0
 2026-11-17,4691,Demi-Souverain Elisabeth II,,non,223.0,
-2026-11-17,3557,Lingot 100g Or,,non,11656.0,10842.5
-2026-11-17,3551,Lingot 10g Or,,non,1203.0,1084.0
-2026-11-17,3555,Lingot 250g Or,,non,29083.5,27671.5
-2026-11-17,3556,Lingot 500g Or,,non,57998.0,55484.0
+2026-11-17,3557,Lingot 100g Or,,non,11659.0,10845.5
+2026-11-17,3551,Lingot 10g Or,,non,1203.5,1084.5
+2026-11-17,3555,Lingot 250g Or,,non,29091.0,27678.5
+2026-11-17,3556,Lingot 500g Or,,non,58012.5,55498.5
 2026-11-17,3550,Lingot 5g Or,,non,616.0,542.0
-2026-11-17,3554,Lingotin 1 Once Or,,non,3653.5,3372.0
+2026-11-17,3554,Lingotin 1 Once Or,,non,3654.5,3373.0
 2026-11-17,3549,Lingotin 1g Or,,non,142.5,108.0
-2026-11-17,4779,Lingotin Combibar 1 Once Or,,non,3794.0,3407.5
-2026-11-17,4763,Lingotin Combibar 100g Or,,non,11972.5,10955.5
-2026-11-17,1061,Lingotin Combibar 10g Or,,non,1299.0,1106.5
-2026-11-17,1062,Lingotin Combibar 20g Or,,non,2485.0,2191.0
-2026-11-17,223,Lingotin Combibar 50g Or,,non,6043.0,5477.5
-2026-11-17,1060,Lingotin Combibar 5g Or,,non,666.5,553.0
+2026-11-17,4779,Lingotin Combibar 1 Once Or,,non,3795.0,3408.0
+2026-11-17,4763,Lingotin Combibar 100g Or,,non,11975.5,10958.5
+2026-11-17,1061,Lingotin Combibar 10g Or,,non,1299.5,1107.0
+2026-11-17,1062,Lingotin Combibar 20g Or,,non,2485.5,2191.5
+2026-11-17,223,Lingotin Combibar 50g Or,,non,6044.5,5479.0
+2026-11-17,1060,Lingotin Combibar 5g Or,,non,667.0,553.5
 2026-11-17,5231,Louis d'Or - 20 Francs Or,,non,689.0,645.0
-2026-11-17,3260,Set 5 Pièces 20 Francs Or,,non,3426.5,
-2026-11-17,3560,Set 5 pièces 20 Fr Or Marianne Coq,,non,3426.5,
+2026-11-17,3260,Set 5 Pièces 20 Francs Or,,non,3427.0,
+2026-11-17,3560,Set 5 pièces 20 Fr Or Marianne Coq,,non,3427.0,
 2026-11-17,20,Union Latine,,non,689.0,642.0
 2026-11-16,17,20 Francs Marianne Coq,pièce,oui,694.0,642.0
 2026-11-16,11,50 Pesos Or,pièce,oui,4481.0,4100.0
