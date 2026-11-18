@@ -1,4 +1,43 @@
 ﻿date;id_produit;produit;famille;suivi;prix_achat_eur;prix_rachat_eur
+2026-11-19;17;20 Francs Marianne Coq;pièce;oui;668,00;623,00
+2026-11-19;11;50 Pesos Or;pièce;oui;4331,50;3992,00
+2026-11-19;12;Krugerrand;pièce;oui;3535,00;3304,50
+2026-11-19;38;Lingot 1Kg Or;lingot;oui;111680,00;107300,00
+2026-11-19;3552;Lingot 20g Or;lingot;oui;2299,50;2102,00
+2026-11-19;3553;Lingot 50g Or;lingot;oui;5655,50;5255,50
+2026-11-19;14;Souverain;pièce;oui;850,50;785,00
+2026-11-19;4767;1 Ducat Or Francois-Joseph 1915;;non;414,50;373,00
+2026-11-19;13;10 Dollars US;;non;1746,50;1615,00
+2026-11-19;18;10 Florins Or;;non;702,00;650,00
+2026-11-19;18860;10 Francs Marianne Coq;;non;381,50;317,50
+2026-11-19;32;10 Francs Napoléon;;non;369,00;320,00
+2026-11-19;19;20 Dollars US;;non;3493,00;3230,00
+2026-11-19;6;20 Francs Napoléon;;non;668,00;623,00
+2026-11-19;15;20 Francs Suisse;;non;674,00;623,00
+2026-11-19;44;20 Francs Tunisie;;non;680,50;620,00
+2026-11-19;34;20 Reichsmarks;;non;824,50;770,00
+2026-11-19;839;4 Ducats Or;;non;1632,50;1519,00
+2026-11-19;33;5 Dollars US Or;;non;906,50;810,00
+2026-11-19;35;5 Roubles;;non;678,50;250,00
+2026-11-19;49;Demi Souverain;;non;433,50;390,00
+2026-11-19;4691;Demi-Souverain Elisabeth II;;non;223,00;
+2026-11-19;3557;Lingot 100g Or;;non;11299,50;10511,00
+2026-11-19;3551;Lingot 10g Or;;non;1166,50;1051,00
+2026-11-19;3555;Lingot 250g Or;;non;28194,00;26824,50
+2026-11-19;3556;Lingot 500g Or;;non;56223,00;53786,50
+2026-11-19;3550;Lingot 5g Or;;non;597,00;525,50
+2026-11-19;3554;Lingotin 1 Once Or;;non;3542,00;3269,00
+2026-11-19;3549;Lingotin 1g Or;;non;138,00;105,00
+2026-11-19;4779;Lingotin Combibar 1 Once Or;;non;3678,00;3303,00
+2026-11-19;4763;Lingotin Combibar 100g Or;;non;11606,00;10620,00
+2026-11-19;1061;Lingotin Combibar 10g Or;;non;1259,50;1072,50
+2026-11-19;1062;Lingotin Combibar 20g Or;;non;2409,00;2124,00
+2026-11-19;223;Lingotin Combibar 50g Or;;non;5858,00;5310,00
+2026-11-19;1060;Lingotin Combibar 5g Or;;non;646,00;536,00
+2026-11-19;5231;Louis d'Or - 20 Francs Or;;non;668,00;623,00
+2026-11-19;3260;Set 5 Pièces 20 Francs Or;;non;3321,50;
+2026-11-19;3560;Set 5 pièces 20 Fr Or Marianne Coq;;non;3321,50;
+2026-11-19;20;Union Latine;;non;668,00;622,00
 2026-11-18;17;20 Francs Marianne Coq;pièce;oui;668,00;623,00
 2026-11-18;11;50 Pesos Or;pièce;oui;4332,00;3993,00
 2026-11-18;12;Krugerrand;pièce;oui;3535,50;3305,00
