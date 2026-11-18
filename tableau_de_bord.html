@@ -68,6 +68,8 @@ label.chk { display: inline-flex; gap: 6px; align-items: center; cursor: pointer
 .up { color: var(--good); } .down { color: var(--bad); } .flat { color: var(--warn); }
 .chart { width: 100%; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid2.solo { grid-template-columns: 1fr; }
+[hidden] { display: none !important; }
 @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 13px; }
 th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--grid); white-space: nowrap; }
@@ -110,6 +112,8 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
       <div class="ctl"><span>Type de moyenne</span><div class="seg" id="segMM"></div></div>
       <label class="chk"><input type="checkbox" id="chkBoll"> Bandes de Bollinger (20, 2σ)</label>
       <label class="chk"><input type="checkbox" id="chkRsi"> RSI (14)</label>
+      <label class="chk"><input type="checkbox" id="chkPrime"> Graphique « Prime sur l'or »</label>
+      <label class="chk"><input type="checkbox" id="chkBase"> Graphique « Performance base 100 »</label>
     </div>
 
     <div class="tiles" id="tiles"></div>
@@ -121,13 +125,24 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
       <div id="chRsi" class="chart" style="height:170px"></div>
     </div>
 
-    <div class="grid2">
-      <div class="card">
+    <div class="card">
+      <h2 id="titreSite"></h2>
+      <p class="sub" id="sousTitreSite"></p>
+      <div class="controls" style="margin: 6px 0 4px;">
+        <div class="ctl"><span>Période</span><div class="seg" id="segSite"></div></div>
+        <label class="chk"><input type="checkbox" id="chkRachat"> Afficher le prix de rachat</label>
+      </div>
+      <div id="chSite" class="chart" style="height:340px"></div>
+      <p class="note">Un relevé par jour de collecte (le dernier de la journée). Prix d'achat = 1er palier de quantité de la fiche produit (relevés des 15 et 16/11 : prix de la page liste).</p>
+    </div>
+
+    <div class="grid2" id="grilleAnnexes">
+      <div class="card" id="cardPrime">
         <h2 id="titrePrime">Prime sur l'or (cotation CPR)</h2>
         <p class="sub">% au-dessus de la valeur de l'or fin contenu, lissé sur 10 séances. Une prime basse est historiquement plus favorable à l'achat. Les deux graphiques comparent les produits de la même famille que la série choisie. La cotation CPR est proche d'un prix de rachat et l'or de référence est le contrat à terme COMEX : pour le lingot 1 kg, la prime peut donc apparaître légèrement négative ; c'est son évolution qui compte.</p>
         <div id="chPrime" class="chart" style="height:320px"></div>
       </div>
-      <div class="card">
+      <div class="card" id="cardBase">
         <h2 id="titreBase">Performance comparée (base 100)</h2>
         <p class="sub">Évolution relative sur la période choisie, toutes séries ramenées à 100 au départ.</p>
         <div id="chBase" class="chart" style="height:320px"></div>
@@ -157,7 +172,8 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
   const estWeekend = (d) => { const j = new Date(d + "T12:00:00").getDay(); return j === 0 || j === 6; };
 
   // ---------- état (mémorisé localement)
-  const defaut = { serie: "12", type: "cpr", periode: "1A", mm1: 20, mm2: 50, mm3: 200, mmType: "SMA", boll: false, rsi: true };
+  const defaut = { serie: "12", type: "cpr", periode: "1A", mm1: 20, mm2: 50, mm3: 200, mmType: "SMA", boll: false, rsi: true,
+    prime: false, base: false, sitePer: "1M", siteRachat: true };
   let S = Object.assign({}, defaut);
   try { Object.assign(S, JSON.parse(localStorage.getItem("suiviOr") || "{}")); } catch (e) {}
   const sauver = () => { try { localStorage.setItem("suiviOr", JSON.stringify(S)); } catch (e) {} };
@@ -234,6 +250,7 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
     selSerie.value = S.serie; majTypes();
     $("mm1").value = S.mm1; $("mm2").value = S.mm2; $("mm3").value = S.mm3;
     $("chkBoll").checked = S.boll; $("chkRsi").checked = S.rsi;
+    $("chkPrime").checked = S.prime; $("chkBase").checked = S.base; $("chkRachat").checked = S.siteRachat;
     segP.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === S.periode));
     segM.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === S.mmType));
   }
@@ -244,6 +261,16 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
   $("chkRsi").onchange = (e) => { S.rsi = e.target.checked; maj(); };
   segP.onclick = (e) => { if (e.target.dataset.v) { S.periode = e.target.dataset.v; maj(); } };
   segM.onclick = (e) => { if (e.target.dataset.v) { S.mmType = e.target.dataset.v; maj(); } };
+  $("chkPrime").onchange = (e) => { S.prime = e.target.checked; maj(); };
+  $("chkBase").onchange = (e) => { S.base = e.target.checked; maj(); };
+
+  // Graphique des prix du site : périodes courtes (en jours)
+  const PERIODES_SITE = { "1S": 7, "2S": 14, "3S": 21, "1M": 30, "3M": 91, "Tout": null };
+  const segSite = $("segSite");
+  Object.keys(PERIODES_SITE).forEach(k => { const b = document.createElement("button"); b.textContent = k; b.dataset.v = k;
+    b.title = { "1S": "1 semaine", "2S": "2 semaines", "3S": "3 semaines", "1M": "1 mois", "3M": "3 mois", "Tout": "Tout l'historique" }[k]; segSite.appendChild(b); });
+  segSite.onclick = (e) => { if (e.target.dataset.v) { S.sitePer = e.target.dataset.v; sauver(); renduSite(); } };
+  $("chkRachat").onchange = (e) => { S.siteRachat = e.target.checked; sauver(); renduSite(); };
 
   // ---------- mise en page Plotly
   function layoutBase(extra) {
@@ -361,7 +388,53 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
     return res;
   }
 
+  function renduSite() {
+    segSite.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === S.sitePer));
+    // Produit = celui de la série choisie (le 1er produit si l'once d'or est sélectionnée)
+    const p = (S.serie !== "or" && pieceParId.get(S.serie)) || D.pieces[0];
+    $("titreSite").textContent = "Prix chez achat-or-et-argent.fr — " + p.nom;
+    const tous = p.site.filter(r => r[1] != null);
+    if (!tous.length) { $("sousTitreSite").textContent = "Pas encore de relevé pour ce produit."; Plotly.purge("chSite"); return; }
+    const derniere = tous[tous.length - 1][0];
+    const jours = PERIODES_SITE[S.sitePer];
+    let deb = "0000";
+    if (jours) { const d = new Date(derniere + "T12:00:00"); d.setDate(d.getDate() - jours); deb = d.toISOString().slice(0, 10); }
+    const pts = tous.filter(r => r[0] >= deb);
+    const x = pts.map(r => r[0]), ya = pts.map(r => r[1]), yr = pts.map(r => r[2]);
+
+    const marque = (couleur, symbole) => ({ size: 9, color: couleur, symbol: symbole, line: { color: css("--surface"), width: 2 } });
+    const traces = [ligne(x, ya, "Prix d'achat", null, 0, {
+      mode: "lines+markers", line: { color: css("--s1"), width: 2 }, marker: marque(css("--s1"), "circle") })];
+    if (S.siteRachat) traces.push(ligne(x, yr, "Prix de rachat", null, 0, {
+      mode: "lines+markers", line: { color: css("--s2"), width: 2, dash: "dash" }, marker: marque(css("--s2"), "diamond") }));
+
+    const xaxis = Object.assign(layoutBase().xaxis, { tickformat: "%d/%m", hoverformat: "%d/%m/%Y" });
+    if (jours) {  // afficher toute la fenêtre choisie, même si elle contient peu de relevés
+      const fin = new Date(derniere + "T12:00:00"); fin.setDate(fin.getDate() + 1);
+      xaxis.range = [deb, fin.toISOString().slice(0, 10)];
+    }
+    Plotly.react("chSite", traces, layoutBase({ xaxis, showlegend: true,
+      yaxis: Object.assign(layoutBase().yaxis, { ticksuffix: " €", tickformat: ",.2f" }) }), CFG);
+
+    // Synthèse de la période
+    const varA = ya.length > 1 ? ya[ya.length - 1] / ya[0] - 1 : null;
+    const cls = varA == null ? "" : varA > 0 ? "up" : varA < 0 ? "down" : "flat";
+    const fl = varA == null ? "" : varA > 0 ? "▲ " : varA < 0 ? "▼ " : "◆ ";
+    $("sousTitreSite").innerHTML = `${pts.length} relevé${pts.length > 1 ? "s" : ""} du ${dfr(x[0])} au ${dfr(x[x.length - 1])}` +
+      ` · dernier prix d'achat <b>${eur(ya[ya.length - 1])}</b>` +
+      (varA == null ? "" : ` · variation sur la période <span class="${cls}">${fl}${pct(varA)}</span>`) +
+      ` · min ${eur(Math.min(...ya))} · max ${eur(Math.max(...ya))}`;
+  }
+
   function renduAnnexes() {
+    renduSite();
+    // Graphiques optionnels : Prime et Base 100
+    $("cardPrime").hidden = !S.prime; $("cardBase").hidden = !S.base;
+    $("grilleAnnexes").hidden = !S.prime && !S.base;
+    $("grilleAnnexes").classList.toggle("solo", S.prime !== S.base);
+    if (!S.prime) Plotly.purge("chPrime");
+    if (!S.base) Plotly.purge("chBase");
+    if (!S.prime && !S.base) return;
     // Styles lisibles par les daltoniens (rouge-vert) : 2 couleurs (bleu / orange) × styles de trait, + noir/blanc pour l'or
     const STYLES = [
       { c: css("--s1"), dash: "solid", w: 2 },     // 1er produit : bleu plein
