@@ -16,6 +16,8 @@ Usage :
   python suivi_or.py              collecte du jour + export
   python suivi_or.py --export     ré-export seul (sans accès réseau)
   python suivi_or.py --historique force le rechargement de 10 ans d'or (Yahoo)
+  python suivi_or.py --releve     relevé léger dans la journée (fiches des produits suivis
+                                  + once du site), sans toucher au prix du jour (celui de 18h15)
 """
 
 from __future__ import annotations
@@ -62,6 +64,10 @@ PIECES = {
 }
 
 log = logging.getLogger("suivi_or")
+
+# Heure du relevé en cours (commune à tous les prix d'une même collecte), ex. "2026-11-24T10:00"
+HORODATAGE = dt.datetime.now().isoformat(timespec="minutes")
+JOURS_RELEVES_EXPORT = 31  # profondeur des relevés dans la journée exportés vers le tableau de bord
 
 
 # --------------------------------------------------------------------------- réseau
@@ -112,6 +118,12 @@ def connexion() -> sqlite3.Connection:
         CREATE TABLE IF NOT EXISTS or_spot (
             date TEXT NOT NULL, source TEXT NOT NULL, eur_oz REAL, usd_oz REAL,
             PRIMARY KEY (date, source));
+        CREATE TABLE IF NOT EXISTS releve_jour (
+            horodatage TEXT NOT NULL, produit_id INTEGER NOT NULL,
+            prix_achat REAL, prix_rachat REAL,
+            PRIMARY KEY (horodatage, produit_id));
+        CREATE TABLE IF NOT EXISTS or_releve (
+            horodatage TEXT NOT NULL PRIMARY KEY, eur_oz REAL, usd_oz REAL);
     """)
     return cx
 
@@ -149,24 +161,33 @@ def collecte_site(cx: sqlite3.Connection) -> None:
             log.error("Produit %s (id %d) absent des pages !", info["nom"], pid)
     log.info("Site : %d produits enregistrés pour le %s", len(lignes), aujourd_hui)
 
-    eur = re.search(r"Once d.or ([\d\s  .,]+?)\s*€/oz", html)
-    usd = re.search(r"Once d.or \$ ([\d\s  .,]+?)\s*\$/oz", html)
-    if eur:
-        cx.execute("INSERT OR REPLACE INTO or_spot VALUES (?,?,?,?)",
-                   (aujourd_hui, "site", nombre_fr(eur.group(1)),
-                    nombre_fr(usd.group(1)) if usd else None))
-        log.info("Site : once d'or %s €/oz", eur.group(1).strip())
-    else:
+    once = _once_site(cx, html)
+    if once:
+        cx.execute("INSERT OR REPLACE INTO or_spot VALUES (?,?,?,?)", (aujourd_hui, "site", *once))
+
+
+def _once_site(cx: sqlite3.Connection, html: str) -> tuple | None:
+    """Lit le cours de l'once affiché en tête de page et l'ajoute aux relevés de la journée."""
+    eur = re.search(r"Once d.or ([\d\s\u00a0\u202f.,]+?)\s*€/oz", html)
+    usd = re.search(r"Once d.or \$ ([\d\s\u00a0\u202f.,]+?)\s*\$/oz", html)
+    if not eur:
         log.warning("Cours de l'once d'or non trouvé dans la page.")
+        return None
+    once = (nombre_fr(eur.group(1)), nombre_fr(usd.group(1)) if usd else None)
+    cx.execute("INSERT OR REPLACE INTO or_releve VALUES (?,?,?)", (HORODATAGE, *once))
+    log.info("Site : once d'or %s €/oz", eur.group(1).strip())
+    return once
 
 
 URL_FICHE = SITE + "/or/produit/{}"
 
 
-def collecte_fiches(cx: sqlite3.Connection) -> None:
+def collecte_fiches(cx: sqlite3.Connection, prix_du_jour: bool = True) -> None:
     """Prix des produits suivis lus sur leur fiche : 1er palier de quantité (1 à 9 pièces,
-    ou 1 à 4 selon le produit) et prix de rachat. Remplace, pour ces produits, le prix de la page liste."""
+    ou 1 à 4 selon le produit) et prix de rachat. Chaque prix est ajouté aux relevés de la journée ;
+    si prix_du_jour, il remplace aussi, pour ces produits, le prix du jour lu sur la page liste."""
     aujourd_hui = dt.date.today().isoformat()
+    echecs = 0
     for pid, info in PIECES.items():
         time.sleep(1.5)  # rester discret
         try:
@@ -178,15 +199,28 @@ def collecte_fiches(cx: sqlite3.Connection) -> None:
                 raise RuntimeError("tableau des prix par quantité introuvable")
             achat = nombre_fr(palier.group(2))
             vente = nombre_fr(rachat.group(1)) if rachat else None
+            cx.execute("INSERT OR REPLACE INTO releve_jour VALUES (?,?,?,?)",
+                       (HORODATAGE, pid, achat, vente))
+            log.info("Fiche %s : achat %s € (%s), rachat %s €", info["nom"], achat,
+                     re.sub(r"\s+", " ", palier.group(1)).strip(), vente)
+            if not prix_du_jour:
+                continue
             nom = cx.execute("SELECT nom FROM prix_site WHERE date=? AND produit_id=?",
                              (aujourd_hui, pid)).fetchone()
             cx.execute("INSERT OR REPLACE INTO prix_site VALUES (?,?,?,?,?,?)",
                        (aujourd_hui, pid, nom[0] if nom else info["nom"], achat, vente,
                         dt.datetime.now().isoformat(timespec="seconds")))
-            log.info("Fiche %s : achat %s € (%s), rachat %s €", info["nom"], achat,
-                     re.sub(r"\s+", " ", palier.group(1)).strip(), vente)
         except Exception as e:  # noqa: BLE001
+            echecs += 1
             log.error("Fiche %s : échec (%s) — prix de la page liste conservé", info["nom"], e)
+    if echecs:
+        raise RuntimeError(f"{echecs} fiche(s) non lue(s)")
+
+
+def collecte_releve(cx: sqlite3.Connection) -> None:
+    """Relevé léger dans la journée : once du site (1 page) + fiches des produits suivis."""
+    _once_site(cx, http(URL_PIECES))
+    collecte_fiches(cx, prix_du_jour=False)
 
 
 def collecte_cpr(cx: sqlite3.Connection) -> None:
@@ -255,12 +289,20 @@ def export(cx: sqlite3.Connection) -> None:
                       "ORDER BY date").fetchall()
     spot_site = cx.execute("SELECT date, eur_oz, usd_oz FROM or_spot WHERE source='site' "
                            "ORDER BY date").fetchall()
+    debut = (dt.date.today() - dt.timedelta(days=JOURS_RELEVES_EXPORT)).isoformat()
+    for p in pieces:
+        p["jour"] = cx.execute("SELECT horodatage, prix_achat, prix_rachat FROM releve_jour "
+                               "WHERE produit_id=? AND horodatage>=? ORDER BY horodatage",
+                               (p["id"], debut)).fetchall()
+    or_jour = cx.execute("SELECT horodatage, eur_oz FROM or_releve WHERE horodatage>=? "
+                         "ORDER BY horodatage", (debut,)).fetchall()
     donnees = {
         "genere": dt.datetime.now().isoformat(timespec="seconds"),
         "grammes_par_once": GRAMMES_PAR_ONCE,
         "pieces": pieces,
         "or_spot": spot,
         "or_spot_site": spot_site,
+        "or_jour": or_jour,
     }
     EXPORT_JS.write_text("window.DONNEES = " + json.dumps(donnees, ensure_ascii=False) + ";\n",
                          encoding="utf-8")
@@ -310,6 +352,15 @@ def export_csv(cx: sqlite3.Connection) -> None:
     # 3. Once d'or
     lignes = list(cx.execute("SELECT date, source, eur_oz, usd_oz FROM or_spot ORDER BY date DESC, source"))
     _ecrire_csv("once_or.csv", ["date", "source", "eur_par_once", "usd_par_once"], lignes)
+
+    # 4. Relevés dans la journée (10h, 15h, 18h15) : produits suivis + once du site (id 0)
+    lignes = [(h, pid, noms.get(pid, ""), familles.get(pid, ""), a, r) for h, pid, a, r in cx.execute(
+        "SELECT horodatage, produit_id, prix_achat, prix_rachat FROM releve_jour")]
+    lignes += [(h, 0, "Once d'or (site)", "or", e, None) for h, e in cx.execute(
+        "SELECT horodatage, eur_oz FROM or_releve")]
+    lignes.sort(key=lambda l: (l[0], -l[1]), reverse=True)
+    _ecrire_csv("releves_jour.csv",
+                ["horodatage", "id_produit", "produit", "famille", "prix_achat_eur", "prix_rachat_eur"], lignes)
     log.info("Export CSV : %s et %s", DOSSIER_CSV, DOSSIER_EXCEL)
 
 
@@ -330,7 +381,14 @@ def main() -> int:
     cx = connexion()
     erreurs = 0
     try:
-        if "--export" not in args:
+        if "--releve" in args:
+            try:
+                collecte_releve(cx)
+            except Exception as e:  # noqa: BLE001
+                erreurs += 1
+                log.error("collecte_releve : %s", e)
+            cx.commit()
+        elif "--export" not in args:
             for etape in (collecte_site, collecte_fiches, collecte_cpr):
                 try:
                     etape(cx)

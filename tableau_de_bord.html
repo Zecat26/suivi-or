@@ -136,6 +136,16 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
       <p class="note">Un relevé par jour de collecte (le dernier de la journée). Prix d'achat = 1er palier de quantité de la fiche produit (relevés des 15 et 16/11 : prix de la page liste).</p>
     </div>
 
+    <div class="card">
+      <h2 id="titreJour"></h2>
+      <p class="sub" id="sousTitreJour"></p>
+      <div class="controls" style="margin: 6px 0 4px;">
+        <div class="ctl"><span>Période</span><div class="seg" id="segJour"></div></div>
+      </div>
+      <div id="chJour" class="chart" style="height:340px"></div>
+      <p class="note">Trois relevés par jour ouvré : 10h, 15h et 18h15 (heure de Paris). Nuits et week-ends masqués. Prix d'achat au 1er palier de quantité (axe de gauche) ; once d'or affichée par le site (axe de droite) : quand les deux courbes bougent ensemble, la variation vient de l'or. Les courbes principales et les indicateurs utilisent le relevé de 18h15.</p>
+    </div>
+
     <div class="grid2" id="grilleAnnexes">
       <div class="card" id="cardPrime">
         <h2 id="titrePrime">Prime sur l'or (cotation CPR)</h2>
@@ -173,7 +183,7 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
 
   // ---------- état (mémorisé localement)
   const defaut = { serie: "12", type: "cpr", periode: "1A", mm1: 20, mm2: 50, mm3: 200, mmType: "SMA", boll: false, rsi: true,
-    prime: false, base: false, sitePer: "1M", siteRachat: true };
+    prime: false, base: false, sitePer: "1M", siteRachat: true, jourPer: "1S" };
   let S = Object.assign({}, defaut);
   try { Object.assign(S, JSON.parse(localStorage.getItem("suiviOr") || "{}")); } catch (e) {}
   const sauver = () => { try { localStorage.setItem("suiviOr", JSON.stringify(S)); } catch (e) {} };
@@ -271,6 +281,13 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
     b.title = { "1S": "1 semaine", "2S": "2 semaines", "3S": "3 semaines", "1M": "1 mois", "3M": "3 mois", "Tout": "Tout l'historique" }[k]; segSite.appendChild(b); });
   segSite.onclick = (e) => { if (e.target.dataset.v) { S.sitePer = e.target.dataset.v; sauver(); renduSite(); } };
   $("chkRachat").onchange = (e) => { S.siteRachat = e.target.checked; sauver(); renduSite(); };
+
+  // Graphique des relevés dans la journée : nombre de jours de relevés affichés
+  const PERIODES_JOUR = { "1J": 1, "3J": 3, "1S": 5 };
+  const segJour = $("segJour");
+  Object.keys(PERIODES_JOUR).forEach(k => { const b = document.createElement("button"); b.textContent = k; b.dataset.v = k;
+    b.title = { "1J": "Dernier jour de relevés", "3J": "3 derniers jours de relevés", "1S": "1 semaine (5 jours ouvrés)" }[k]; segJour.appendChild(b); });
+  segJour.onclick = (e) => { if (e.target.dataset.v) { S.jourPer = e.target.dataset.v; sauver(); renduJour(); } };
 
   // ---------- mise en page Plotly
   function layoutBase(extra) {
@@ -426,8 +443,63 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
       ` · min ${eur(Math.min(...ya))} · max ${eur(Math.max(...ya))}`;
   }
 
+  // Créneau d'un relevé "AAAA-MM-JJTHH:MM" : 10h, 15h ou 18h15 (les relevés manuels sont rangés au plus proche)
+  const creneau = (h) => { const x = +h.slice(11, 13) + h.slice(14, 16) / 60; return x < 12.5 ? "10h" : x < 16.6 ? "15h" : "18h15"; };
+  const hfr = (h) => dfr(h.slice(0, 10)).slice(0, 5) + " " + h.slice(11, 13) + "h" + h.slice(14, 16);
+
+  function renduJour() {
+    segJour.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === S.jourPer));
+    const p = (S.serie !== "or" && pieceParId.get(S.serie)) || D.pieces[0];
+    $("titreJour").textContent = "Variations dans la journée — " + p.nom;
+    const tous = (p.jour || []).filter(r => r[1] != null);
+    if (!tous.length) {
+      $("sousTitreJour").textContent = "Pas encore de relevé dans la journée : ils commencent le 24/11/2026 à 10h.";
+      Plotly.purge("chJour"); return;
+    }
+    const jours = [...new Set(tous.map(r => r[0].slice(0, 10)))];
+    const garder = new Set(jours.slice(-PERIODES_JOUR[S.jourPer]));
+    const pts = tous.filter(r => garder.has(r[0].slice(0, 10)));
+    const orPts = (D.or_jour || []).filter(r => garder.has(r[0].slice(0, 10)));
+    const xd = (h) => h.replace("T", " ");
+
+    const marque = (couleur, symbole) => ({ size: 8, color: couleur, symbol: symbole, line: { color: css("--surface"), width: 1.5 } });
+    const traces = [
+      ligne(pts.map(r => xd(r[0])), pts.map(r => r[1]), "Prix d'achat", null, 0, {
+        mode: "lines+markers", line: { color: css("--s1"), width: 2 }, marker: marque(css("--s1"), "circle") }),
+      ligne(orPts.map(r => xd(r[0])), orPts.map(r => r[1]), "Once d'or (site, axe de droite)", null, 0, {
+        yaxis: "y2", mode: "lines+markers", line: { color: css("--s2"), width: 2, dash: "dot" }, marker: marque(css("--s2"), "diamond"),
+        hovertemplate: "%{y:,.2f} €/oz<extra>Once d'or</extra>" }),
+    ];
+    const xaxis = Object.assign(layoutBase().xaxis, { tickformat: "%d/%m", hoverformat: "%d/%m %Hh%M",
+      rangebreaks: [{ bounds: ["sat", "mon"] }, { bounds: [19, 9.5], pattern: "hour" }] });
+    const yaxis = Object.assign(layoutBase().yaxis, { ticksuffix: " €", tickformat: ",.2f" });
+    const yaxis2 = { overlaying: "y", side: "right", showgrid: false, zeroline: false, linecolor: css("--axis"),
+      tickformat: ",.0f", ticksuffix: " €", tickfont: { color: css("--s2") } };
+    Plotly.react("chJour", traces, layoutBase({ xaxis, yaxis, yaxis2, showlegend: true,
+      margin: { l: 64, r: 70, t: 8, b: 36 } }), CFG);
+
+    // Synthèse : extrêmes, amplitude moyenne dans la journée, créneau le plus souvent le moins cher
+    const ya = pts.map(r => r[1]);
+    const iMin = ya.indexOf(Math.min(...ya)), iMax = ya.indexOf(Math.max(...ya));
+    const parJour = new Map();
+    pts.forEach(r => { const j = r[0].slice(0, 10); if (!parJour.has(j)) parJour.set(j, []); parJour.get(j).push(r); });
+    const comptes = { "10h": 0, "15h": 0, "18h15": 0 }; let ampl = 0, nAmpl = 0;
+    parJour.forEach(rs => {
+      if (rs.length < 2) return;
+      const v = rs.map(r => r[1]), mi = Math.min(...v);
+      ampl += Math.max(...v) - mi; nAmpl++;
+      rs.filter(r => r[1] === mi).forEach(r => comptes[creneau(r[0])]++);
+    });
+    const meilleur = Object.entries(comptes).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+    $("sousTitreJour").innerHTML = `${pts.length} relevé${pts.length > 1 ? "s" : ""} sur ${parJour.size} jour${parJour.size > 1 ? "s" : ""}` +
+      ` · plus bas <b>${eur(ya[iMin])}</b> (${hfr(pts[iMin][0])}) · plus haut <b>${eur(ya[iMax])}</b> (${hfr(pts[iMax][0])})` +
+      (nAmpl ? ` · écart moyen dans la journée ${eur(ampl / nAmpl)}` : "") +
+      (meilleur.length ? ` · prix le plus bas de la journée le plus souvent à <b>${meilleur[0][0]}</b> (${meilleur.map(([c, n]) => c + " : " + n + " fois").join(", ")})` : "");
+  }
+
   function renduAnnexes() {
     renduSite();
+    renduJour();
     // Graphiques optionnels : Prime et Base 100
     $("cardPrime").hidden = !S.prime; $("cardBase").hidden = !S.base;
     $("grilleAnnexes").hidden = !S.prime && !S.base;

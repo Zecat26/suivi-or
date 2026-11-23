@@ -9,6 +9,9 @@ Outil personnel de suivi des cours : 20 Francs Marianne, Souverain, 50 Pesos, Kr
   via un minuteur systemd (`suivi-or.timer` → `/home/suivi/collecte.sh`, utilisateur `suivi`). Si le serveur était
   arrêté à l'heure prévue, la collecte est rattrapée au redémarrage. Chaque collecte enregistre les données dans le dépôt
   https://github.com/Zecat26/suivi-or (commit « Collecte du … (VPS) ») et met à jour le tableau de bord en ligne.
+- **Relevés dans la journée** : à 10h00 et 15h00 (lun–ven), un relevé léger (`suivi_or.py --releve`, minuteur
+  `suivi-or-releve.timer`) lit les prix des 7 fiches et l'once du site. Avec celui de 18h15, cela donne 3 points par jour
+  pour le graphique « Variations dans la journée ». Le prix du jour (courbes, indicateurs) reste celui de 18h15.
 - **Collecte manuelle de secours** : onglet *Actions* du dépôt → *Collecte quotidienne* → *Run workflow*
   (le workflow GitHub n'a plus de planification automatique).
 - **Sur le VPS** : `systemctl list-timers suivi-or.timer` (prochaine collecte), `journalctl -u suivi-or` (journal),
@@ -29,8 +32,9 @@ depuis le passage à GitHub, pour éviter deux collectes concurrentes. Pour la r
 | `tableau_de_bord.html` | Graphiques, moyennes mobiles, Bollinger, RSI, tendance, primes, base 100 |
 | `installer_tache.ps1` | (Ré)installe la tâche planifiée |
 | `data/csv/*.csv` | Mêmes données en CSV standard (virgules) : consultables directement sur GitHub sous forme de tableau |
+| `data/csv/releves_jour.csv` | Relevés de 10h, 15h et 18h15 (horodatage, produit, prix d'achat/rachat ; id 0 = once d'or du site) |
 | `data/excel/*.csv` | Mêmes données en CSV pour Excel en français (points-virgules, décimales à virgule) : ouverture par double-clic |
-| `data/cours.db` | Base SQLite : tables `prix_site`, `cotation_cpr`, `or_spot` (ouvrable avec DB Browser for SQLite, Excel via ODBC, Python/pandas…) |
+| `data/cours.db` | Base SQLite : tables `prix_site`, `cotation_cpr`, `or_spot`, `releve_jour`, `or_releve` (ouvrable avec DB Browser for SQLite, Excel via ODBC, Python/pandas…) |
 | `logs/collecte.log` | Journal des collectes (à consulter en cas de doute) |
 
 ## Les données
