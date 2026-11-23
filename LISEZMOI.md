@@ -5,10 +5,14 @@ Outil personnel de suivi des cours : 20 Francs Marianne, Souverain, 50 Pesos, Kr
 ## Utilisation au quotidien
 
 - **Tableau de bord en ligne : https://zecat26.github.io/suivi-or/** (ordinateur, téléphone, tablette).
-- La collecte tourne **sur les serveurs GitHub**, PC éteint, du lundi au vendredi vers 18h00 (heure de Paris, 19h00 en été).
-  GitHub peut décaler l'exécution de quelques minutes à une heure. Chaque collecte enregistre les données dans le dépôt
-  https://github.com/Zecat26/suivi-or et met à jour le tableau de bord en ligne. En cas d'échec, GitHub envoie un e-mail.
-- **Collecte manuelle** : onglet *Actions* du dépôt → *Collecte quotidienne* → *Run workflow*.
+- La collecte tourne **sur un VPS Hostinger** (Ubuntu), PC éteint, du lundi au vendredi à 18h15 (heure de Paris),
+  via un minuteur systemd (`suivi-or.timer` → `/home/suivi/collecte.sh`, utilisateur `suivi`). Si le serveur était
+  arrêté à l'heure prévue, la collecte est rattrapée au redémarrage. Chaque collecte enregistre les données dans le dépôt
+  https://github.com/Zecat26/suivi-or (commit « Collecte du … (VPS) ») et met à jour le tableau de bord en ligne.
+- **Collecte manuelle de secours** : onglet *Actions* du dépôt → *Collecte quotidienne* → *Run workflow*
+  (le workflow GitHub n'a plus de planification automatique).
+- **Sur le VPS** : `systemctl list-timers suivi-or.timer` (prochaine collecte), `journalctl -u suivi-or` (journal),
+  `systemctl start suivi-or` (lancer une collecte tout de suite).
 - **Copie locale** : `git pull` dans ce dossier récupère les dernières données ; `tableau_de_bord.html` s'ouvre alors aussi en local.
 
 ### Tâche Windows locale (secours, désactivée)
