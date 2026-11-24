@@ -101,6 +101,14 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
       <p class="note">Prix d'achat = prix unitaire du 1er palier de quantité de la fiche produit (1 à 9 pièces, ou 1 à 4 selon le produit). Prime = écart entre le prix et la valeur de l'or fin contenu. Écart = coût d'un aller-retour (achat puis revente immédiate).</p>
     </div>
 
+    <!-- ETF / ETC or -->
+    <div class="card">
+      <h2>ETF et ETC or cotés en euros</h2>
+      <p class="sub" id="etfSub"></p>
+      <div class="tablewrap"><table id="tabEtf"></table></div>
+      <p class="note">Cours de clôture sur Xetra (Francfort), en euros, source Yahoo Finance ; le cours du jour est provisoire tant que la bourse est ouverte. Tous sont accessibles via Interactive Brokers (IBKR) et la plupart des courtiers européens ; les ETC or ne sont pas éligibles au PEA (compte-titres uniquement). Frais = frais annuels de gestion (TER). « Or physique » : chaque part est adossée à de l'or stocké en coffre. « Mines d'or » : actions de sociétés minières, qui amplifient en général les mouvements de l'or. Sélectionnez un ETF dans le menu « Série » pour afficher ses moyennes mobiles. Liste informative, pas un conseil d'investissement.</p>
+    </div>
+
     <!-- Contrôles -->
     <div class="card controls">
       <label class="ctl"><span>Série</span><select id="selSerie"></select></label>
@@ -123,6 +131,14 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
       <p class="sub" id="sousTitrePrincipal"></p>
       <div id="chMain" class="chart" style="height:440px"></div>
       <div id="chRsi" class="chart" style="height:170px"></div>
+    </div>
+
+    <div class="card" id="cardOr">
+      <h2>Once d'or en € — cours et moyennes mobiles</h2>
+      <p class="sub" id="sousTitreOr"></p>
+      <div id="chOr" class="chart" style="height:400px"></div>
+      <div id="chOrRsi" class="chart" style="height:160px"></div>
+      <p class="note">Cours de référence de l'or : contrat COMEX (Yahoo Finance, GC=F) converti en euros, clôture quotidienne, 10 ans d'historique. Période, moyennes mobiles, Bollinger et RSI suivent les réglages ci-dessus.</p>
     </div>
 
     <div class="card">
@@ -205,15 +221,20 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
   const pieceParId = new Map(D.pieces.map(p => [String(p.id), p]));
   const TYPES = { cpr: "Cotation CPR (marché)", achat: "Prix d'achat (site)", rachat: "Prix de rachat (site)" };
 
+  const ETFS = D.etf || [];
+  const etfParSel = new Map(ETFS.map(e => ["etf:" + e.symbole, e]));
+  const estAutre = (sel) => sel === "or" || etfParSel.has(sel);   // séries sans choix de prix (once, ETF)
+
   function serie(sel, type) {
     if (sel === "or") return spot.slice();
+    if (etfParSel.has(sel)) return etfParSel.get(sel).cours.map(r => ({ d: r[0], v: r[1] })).filter(x => x.v != null && !estWeekend(x.d));
     const p = pieceParId.get(sel);
     let pts;
     if (type === "cpr") pts = p.cpr.map(r => ({ d: r[0], v: r[1] }));
     else pts = p.site.map(r => ({ d: r[0], v: type === "achat" ? r[1] : r[2] }));
     return pts.filter(x => x.v != null && !estWeekend(x.d));
   }
-  const nomSerie = (sel) => sel === "or" ? "Once d'or" : pieceParId.get(sel).nom;
+  const nomSerie = (sel) => sel === "or" ? "Once d'or" : etfParSel.has(sel) ? etfParSel.get(sel).nom : pieceParId.get(sel).nom;
 
   // ---------- indicateurs
   function sma(v, n) { const o = Array(v.length).fill(null); let s = 0;
@@ -250,6 +271,11 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
   });
   const gOr = document.createElement("optgroup"); gOr.label = "Or";
   gOr.appendChild(new Option("Once d'or (€/oz)", "or")); selSerie.appendChild(gOr);
+  if (ETFS.length) {
+    const gE = document.createElement("optgroup"); gE.label = "ETF or (€)";
+    ETFS.forEach(e => gE.appendChild(new Option(e.nom, "etf:" + e.symbole))); selSerie.appendChild(gE);
+  }
+  if (!pieceParId.has(S.serie) && S.serie !== "or" && !etfParSel.has(S.serie)) S.serie = defaut.serie;
   const segP = $("segPeriode");
   Object.keys(PERIODES).forEach(k => { const b = document.createElement("button"); b.textContent = k; b.dataset.v = k; segP.appendChild(b); });
   const segM = $("segMM");
@@ -257,7 +283,7 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
 
   function majTypes() {
     const sT = $("selType"); sT.innerHTML = "";
-    if (S.serie === "or") { sT.add(new Option("Cours (€/oz)", "cpr")); sT.disabled = true; S.type = "cpr"; return; }
+    if (estAutre(S.serie)) { sT.add(new Option(S.serie === "or" ? "Cours (€/oz)" : "Cours de clôture (€)", "cpr")); sT.disabled = true; S.type = "cpr"; return; }
     sT.disabled = false; Object.entries(TYPES).forEach(([k, t]) => sT.add(new Option(t, k))); sT.value = S.type;
   }
   function syncControles() {
@@ -334,8 +360,10 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
     sauver(); syncControles();
     const pts = serie(S.serie, S.type);
     const nom = nomSerie(S.serie);
-    const libType = S.serie === "or" ? "€/oz (Yahoo Finance, contrat COMEX converti en €)" : TYPES[S.type];
-    $("titrePrincipal").textContent = nom + " — " + (S.serie === "or" ? "cours en €/oz" : TYPES[S.type]);
+    const etf = etfParSel.get(S.serie);
+    const libType = S.serie === "or" ? "€/oz (Yahoo Finance, contrat COMEX converti en €)"
+      : etf ? "cours de clôture Xetra en € (" + etf.symbole + ", ISIN " + etf.isin + ")" : TYPES[S.type];
+    $("titrePrincipal").textContent = nom + " — " + (S.serie === "or" ? "cours en €/oz" : etf ? "cours en €" : TYPES[S.type]);
     if (pts.length === 0) {
       $("sousTitrePrincipal").textContent = "Pas encore de données pour cette série.";
       Plotly.purge("chMain"); Plotly.purge("chRsi"); $("tiles").innerHTML = ""; $("tabHist").innerHTML = ""; renduAnnexes(); return;
@@ -380,12 +408,12 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
     const t = [];
     t.push(tuile("Dernier cours", eur(last), "au " + dfr(d[n])));
     [["Var. 1 séance", 1], ["Var. 1 mois", 21], ["Var. 1 an", 252]].forEach(([k, j]) => { const x = varAt(j); t.push(tuile(k, `<span class="${cls(x)}">${fleche(x)}${pct(x)}</span>`, x == null ? "historique insuffisant" : "vs " + dfr(d[n - j]))); });
-    if (S.serie !== "or") {
+    if (pieceParId.has(S.serie)) {
       const p = pieceParId.get(S.serie), s = spotAu(d[n]);
       const prime = s ? last / (s / GPO * p.or_fin_g) - 1 : null;
       t.push(tuile("Prime sur l'or", pct(prime, false), "or fin " + p.or_fin_g.toLocaleString("fr-FR") + " g"));
     }
-    const tend = tendance(v, m1, m2, m3);
+    const tend = tendance(v, m1, m2, m3, d);
     t.push(tuile("Tendance", `<span class="${tend.cls}">${tend.icone} ${tend.label}</span>`, tend.detail));
     const r = R[n]; t.push(tuile("RSI 14", r == null ? "–" : r.toFixed(0), r == null ? "" : r >= 70 ? "zone de surachat" : r <= 30 ? "zone de survente" : "zone neutre"));
     $("tiles").innerHTML = t.join("");
@@ -398,12 +426,14 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
       h += `<tr><td>${dfr(d[i])}</td><td>${eur(v[i])}</td><td class="${cls(x)}">${pct(x)}</td><td>${eur(m1[i])}</td><td>${eur(m2[i])}</td><td>${eur(m3[i])}</td><td>${R[i] == null ? "–" : R[i].toFixed(0)}</td></tr>`;
     }
     $("tabHist").innerHTML = h;
+    renduOr();
     renduAnnexes();
   }
 
   function tuile(k, v, d) { return `<div class="tile"><div class="k">${k}</div><div class="v">${v}</div><div class="d">${d || ""}</div></div>`; }
 
-  function tendance(v, m1, m2, m3) {
+  function tendance(v, m1, m2, m3, dates) {
+    const dd = dates || serie(S.serie, S.type).map(p => p.d);
     const n = v.length - 1, c = v[n], a = m1[n], b = m2[n], l = m3[n];
     if (b == null) return { cls: "flat", icone: "◆", label: "Indéterminée", detail: "historique trop court" };
     let res;
@@ -421,8 +451,8 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
     for (let i = n; i > 0; i--) {
       if (m1[i] == null || m2[i] == null || m1[i - 1] == null || m2[i - 1] == null) break;
       const avant = m1[i - 1] - m2[i - 1], apres = m1[i] - m2[i];
-      if (avant <= 0 && apres > 0) { croix = "croisement haussier MM courte/moyenne le " + dfr(serie(S.serie, S.type)[i].d); break; }
-      if (avant >= 0 && apres < 0) { croix = "croisement baissier MM courte/moyenne le " + dfr(serie(S.serie, S.type)[i].d); break; }
+      if (avant <= 0 && apres > 0) { croix = "croisement haussier MM courte/moyenne le " + dfr(dd[i]); break; }
+      if (avant >= 0 && apres < 0) { croix = "croisement baissier MM courte/moyenne le " + dfr(dd[i]); break; }
     }
     res.detail = croix || (l != null ? "cours vs MM moyenne vs MM longue" : "MM longue indisponible");
     return res;
@@ -601,7 +631,79 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
     $("tabJour").innerHTML = h;
   }
 
+  // ---------- graphique dédié à l'once d'or (mêmes réglages que le graphique principal)
+  function renduOr() {
+    $("cardOr").hidden = S.serie === "or";   // inutile en double quand l'once est déjà la série principale
+    if (S.serie === "or") { Plotly.purge("chOr"); Plotly.purge("chOrRsi"); return; }
+    const v = spot.filter(p => !estWeekend(p.d)), d = v.map(p => p.d), y = v.map(p => p.v);
+    if (!y.length) { $("sousTitreOr").textContent = "Pas de données."; return; }
+    const m1 = mm(y, S.mm1), m2 = mm(y, S.mm2), m3 = mm(y, S.mm3), R = rsi(y, 14), B = bollinger(y, 20, 2);
+    const i0 = Math.max(0, d.findIndex(x => x >= debutPeriode(d[d.length - 1])));
+    const cut = (a) => a.slice(i0), X = cut(d), lbl = S.mmType === "EMA" ? "MME" : "MM";
+    const trait = (couleur, largeur, dash) => ({ line: { color: couleur, width: largeur, dash: dash } });
+    const traces = [];
+    if (S.boll) {
+      traces.push(ligne(X, cut(B.hi), "Bollinger haut", "rgba(0,0,0,0)", 0, { showlegend: false, hoverinfo: "skip", hovertemplate: null }));
+      traces.push(ligne(X, cut(B.lo), "Bollinger (20, 2σ)", "rgba(0,0,0,0)", 0, { fill: "tonexty", fillcolor: css("--band"), hoverinfo: "skip", hovertemplate: null }));
+    }
+    traces.push(ligne(X, cut(y), "Once d'or (€/oz)", null, 0, trait(css("--ink"), 2.2, "solid")));
+    traces.push(ligne(X, cut(m1), lbl + S.mm1, null, 0, trait(css("--s1"), 2, "solid")));
+    traces.push(ligne(X, cut(m2), lbl + S.mm2, null, 0, trait(css("--s2"), 2, "dash")));
+    traces.push(ligne(X, cut(m3), lbl + S.mm3, null, 0, trait(css("--muted"), 2, "dot")));
+    Plotly.react("chOr", traces, layoutBase({ yaxis: Object.assign(layoutBase().yaxis, { ticksuffix: " €" }) }), CFG);
+    $("chOrRsi").style.display = S.rsi ? "" : "none";
+    if (S.rsi) {
+      const lay = layoutBase({ margin: { l: 64, r: 16, t: 4, b: 30 }, showlegend: false,
+        yaxis: Object.assign(layoutBase().yaxis, { range: [0, 100], tickvals: [30, 50, 70], title: { text: "RSI 14", font: { size: 11 } } }),
+        shapes: [70, 30].map(yy => ({ type: "line", xref: "paper", x0: 0, x1: 1, y0: yy, y1: yy, line: { color: css("--muted"), width: 1, dash: "dot" } })) });
+      Plotly.react("chOrRsi", [ligne(X, cut(R), "RSI 14", css("--s5"), 1.5)], lay, CFG);
+    } else Plotly.purge("chOrRsi");
+    const n = y.length - 1, t = tendance(y, m1, m2, m3, d);
+    const var1 = n > 0 ? y[n] / y[n - 1] - 1 : null, cls = (x) => x == null ? "" : x > 0 ? "up" : x < 0 ? "down" : "flat";
+    $("sousTitreOr").innerHTML = `Dernier cours <b>${eur(y[n])}</b>/oz au ${dfr(d[n])}` +
+      ` · séance <span class="${cls(var1)}">${var1 > 0 ? "▲ " : var1 < 0 ? "▼ " : "◆ "}${pct(var1)}</span>` +
+      ` · tendance <span class="${t.cls}">${t.icone} ${t.label}</span> (${t.detail})` +
+      (R[n] == null ? "" : ` · RSI ${R[n].toFixed(0)}`);
+  }
+
+  // ---------- tableau des ETF / ETC or
+  function tableauEtf() {
+    if (!ETFS.length) { $("tabEtf").innerHTML = ""; $("etfSub").textContent = "Pas encore de données ETF."; return; }
+    const derniere = ETFS.map(e => (e.cours[e.cours.length - 1] || [""])[0]).sort().pop();
+    // Performance sur une durée calendaire (0 = depuis la séance précédente), à partir de points {d, v}
+    const perfDepuis = (pts, jours) => {
+      const n = pts.length - 1; if (n < 1) return null;
+      if (!jours) return pts[n].v / pts[n - 1].v - 1;
+      const lim = new Date(pts[n].d + "T12:00:00"); lim.setDate(lim.getDate() - jours);
+      const cible = lim.toISOString().slice(0, 10);
+      let i = n; while (i > 0 && pts[i].d > cible) i--;
+      return pts[i].d <= cible ? pts[n].v / pts[i].v - 1 : null;
+    };
+    const so = spot.filter(p => !estWeekend(p.d));
+    const perfOr = (k) => perfDepuis(so, k);
+    $("etfSub").textContent = "Dernière cotation : " + dfr(derniere) + " · variations calculées sur 1 mois, 6 mois et 1 an calendaires · comparaison avec l'once d'or en € (ligne du bas)";
+    const cls = (x) => x == null ? "" : x > 0 ? "up" : x < 0 ? "down" : "flat";
+    const fl = (x) => x == null ? "" : x > 0 ? "▲ " : x < 0 ? "▼ " : "◆ ";
+    const cell = (x) => `<td class="${cls(x)}">${fl(x)}${pct(x)}</td>`;
+    const DUREES = [0, 30, 182, 365];
+    let h = "<tr><th>ETF / ETC</th><th>Type</th><th>Code / ISIN</th><th>Frais/an</th><th>Cours</th><th>1 séance</th><th>1 mois</th><th>6 mois</th><th>1 an</th><th>Remarque</th></tr>";
+    let fam = null;
+    ETFS.forEach(e => {
+      if (e.famille !== fam) { fam = e.famille; h += `<tr class="groupe"><td colspan="10">${fam}</td></tr>`; }
+      const pts = e.cours.filter(r => r[1] != null && !estWeekend(r[0])).map(r => ({ d: r[0], v: r[1] }));
+      const c = pts.map(p => p.v), n = c.length - 1;
+      const perf = (k) => perfDepuis(pts, k);
+      h += `<tr><td>${e.nom}</td><td>${e.famille}</td><td>${e.symbole.replace(".DE", "")} · ${e.isin}</td>` +
+        `<td>${e.ter.toLocaleString("fr-FR", { minimumFractionDigits: 2 })} %</td><td><b>${eur(c[n])}</b></td>` +
+        DUREES.map(k => cell(perf(k))).join("") + `<td class="note">${e.note || ""}</td></tr>`;
+    });
+    h += `<tr class="groupe"><td colspan="10">Référence</td></tr><tr><td>Once d'or (€/oz)</td><td>Cours de l'or</td><td>COMEX → €</td><td>–</td><td><b>${eur(so[so.length - 1].v)}</b> <span class="note">(${dfr(so[so.length - 1].d)})</span></td>` +
+      DUREES.map(k => cell(perfOr(k))).join("") + "<td></td></tr>";
+    $("tabEtf").innerHTML = h;
+  }
+
   tableauJour();
+  tableauEtf();
   maj();
   // Re-rendu si le thème clair/sombre change
   if (window.matchMedia) matchMedia("(prefers-color-scheme: dark)").addEventListener("change", maj);

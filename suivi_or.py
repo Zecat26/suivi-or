@@ -8,6 +8,7 @@ Collecte quotidienne (bibliothèque standard Python uniquement) :
      + cours de l'once d'or affiché par le site (€/oz et $/oz)
   2. Cotation CPR (1 an glissant) des pièces et lingots suivis, via le graphique du site
   3. Cours de l'once d'or (Yahoo Finance : GC=F / EURUSD=X), historique 10 ans au 1er lancement
+  4. Cours de clôture d'ETF / ETC or cotés en euros sur Xetra (Yahoo Finance), 10 ans au 1er lancement
 
 Les données sont stockées dans data/cours.db (SQLite) puis exportées dans
 data/donnees.js, lu par tableau_de_bord.html.
@@ -61,6 +62,24 @@ PIECES = {
     38: {"nom": "Lingot 1 kg", "or_fin_g": 999.9, "type": "lingot"},
     3553: {"nom": "Lingotin 50 g", "or_fin_g": 49.995, "type": "lingot"},
     3552: {"nom": "Lingotin 20 g", "or_fin_g": 19.998, "type": "lingot"},
+}
+
+# ETF / ETC or suivis : symbole Yahoo (cotation Xetra, en €) -> fiche descriptive (liste informative)
+ETF = {
+    "4GLD.DE": {"nom": "Xetra-Gold", "isin": "DE000A0S9GB0", "ter": 0.0, "famille": "Or physique",
+                "note": "Livraison physique de l'or possible"},
+    "PPFB.DE": {"nom": "iShares Physical Gold ETC", "isin": "IE00B4ND3602", "ter": 0.12, "famille": "Or physique",
+                "note": "Le plus gros encours (aussi coté à Londres : IGLN)"},
+    "8PSG.DE": {"nom": "Invesco Physical Gold ETC", "isin": "IE00B579F325", "ter": 0.12, "famille": "Or physique",
+                "note": "Aussi coté à Londres : SGLD"},
+    "GLDA.DE": {"nom": "Amundi Physical Gold ETC", "isin": "FR0013416716", "ter": 0.12, "famille": "Or physique",
+                "note": "Aussi coté à Paris : GOLD"},
+    "XAD5.DE": {"nom": "Xtrackers Physical Gold ETC (EUR)", "isin": "DE000A1E0HR8", "ter": 0.25, "famille": "Or physique",
+                "note": ""},
+    "G2X.DE": {"nom": "VanEck Gold Miners UCITS ETF", "isin": "IE00BQQP9F84", "ter": 0.53, "famille": "Mines d'or",
+               "note": "Actions de sociétés minières : plus volatil que l'or"},
+    "IS0E.DE": {"nom": "iShares Gold Producers UCITS ETF", "isin": "IE00B6R52036", "ter": 0.55, "famille": "Mines d'or",
+                "note": "Actions de sociétés minières : plus volatil que l'or"},
 }
 
 log = logging.getLogger("suivi_or")
@@ -122,6 +141,9 @@ def connexion() -> sqlite3.Connection:
             horodatage TEXT NOT NULL, produit_id INTEGER NOT NULL,
             prix_achat REAL, prix_rachat REAL,
             PRIMARY KEY (horodatage, produit_id));
+        CREATE TABLE IF NOT EXISTS etf_cours (
+            date TEXT NOT NULL, symbole TEXT NOT NULL, cloture REAL,
+            PRIMARY KEY (date, symbole));
         CREATE TABLE IF NOT EXISTS or_releve (
             horodatage TEXT NOT NULL PRIMARY KEY, eur_oz REAL, usd_oz REAL);
     """)
@@ -278,6 +300,21 @@ def collecte_yahoo(cx: sqlite3.Connection, forcer_historique: bool = False) -> N
     log.info("Yahoo : %d jours d'once d'or (%s)", len(lignes), periode)
 
 
+def collecte_etf(cx: sqlite3.Connection) -> None:
+    """Cours de clôture quotidiens des ETF / ETC or (10 ans la 1re fois, puis 3 mois glissants)."""
+    for sym, info in ETF.items():
+        vide = cx.execute("SELECT COUNT(*) FROM etf_cours WHERE symbole=?", (sym,)).fetchone()[0] == 0
+        periode = "10y" if vide else "3mo"
+        try:
+            cours = _yahoo(sym, periode)
+            cx.executemany("INSERT OR REPLACE INTO etf_cours VALUES (?,?,?)",
+                           [(d, sym, round(v, 4)) for d, v in cours.items()])
+            log.info("ETF %s : %d jours (%s)", info["nom"], len(cours), periode)
+        except Exception as e:  # noqa: BLE001
+            log.error("ETF %s : échec (%s)", info["nom"], e)
+        time.sleep(0.5)
+
+
 # --------------------------------------------------------------------------- export
 
 def export(cx: sqlite3.Connection) -> None:
@@ -307,6 +344,9 @@ def export(cx: sqlite3.Connection) -> None:
         "or_spot": spot,
         "or_spot_site": spot_site,
         "or_jour": or_jour,
+        "etf": [dict(info, symbole=sym, cours=cx.execute(
+            "SELECT date, cloture FROM etf_cours WHERE symbole=? ORDER BY date", (sym,)).fetchall())
+            for sym, info in ETF.items()],
     }
     EXPORT_JS.write_text("window.DONNEES = " + json.dumps(donnees, ensure_ascii=False) + ";\n",
                          encoding="utf-8")
@@ -357,7 +397,13 @@ def export_csv(cx: sqlite3.Connection) -> None:
     lignes = list(cx.execute("SELECT date, source, eur_oz, usd_oz FROM or_spot ORDER BY date DESC, source"))
     _ecrire_csv("once_or.csv", ["date", "source", "eur_par_once", "usd_par_once"], lignes)
 
-    # 4. Relevés dans la journée (10h, 15h, 18h15) : produits suivis + once du site (id 0)
+    # 4. ETF / ETC or (clôtures Xetra en €)
+    noms_etf = {sym: i["nom"] for sym, i in ETF.items()}
+    lignes = [(d, sym, noms_etf.get(sym, ""), v) for d, sym, v in cx.execute(
+        "SELECT date, symbole, cloture FROM etf_cours ORDER BY date DESC, symbole")]
+    _ecrire_csv("etf_or.csv", ["date", "symbole", "etf", "cloture_eur"], lignes)
+
+    # 5. Relevés dans la journée (10h, 15h, 18h15) : produits suivis + once du site (id 0)
     lignes = [(h, pid, noms.get(pid, ""), familles.get(pid, ""), a, r) for h, pid, a, r in cx.execute(
         "SELECT horodatage, produit_id, prix_achat, prix_rachat FROM releve_jour")]
     lignes += [(h, 0, "Once d'or (site)", "or", e, None) for h, e in cx.execute(
@@ -401,6 +447,8 @@ def main() -> int:
                     erreurs += 1
                     log.error("%s : %s", etape.__name__, e)
             collecte_yahoo(cx, forcer_historique="--historique" in args)
+            cx.commit()
+            collecte_etf(cx)
             cx.commit()
         export(cx)
     finally:
