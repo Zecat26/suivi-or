@@ -131,9 +131,11 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
       <div class="controls" style="margin: 6px 0 4px;">
         <div class="ctl"><span>Période</span><div class="seg" id="segSite"></div></div>
         <label class="chk"><input type="checkbox" id="chkRachat"> Afficher le prix de rachat</label>
+        <label class="chk"><input type="checkbox" id="chkSitePrime"> Afficher la prime (%)</label>
       </div>
       <div id="chSite" class="chart" style="height:340px"></div>
-      <p class="note">Un point par jour : le dernier relevé de la journée (mis à jour à 10h, 15h puis 18h15, qui fait foi). Prix d'achat = 1er palier de quantité de la fiche produit (relevés des 15 et 16/11 : prix de la page liste).</p>
+      <div id="chSitePrime" class="chart" style="height:200px"></div>
+      <p class="note">Un point par jour : le dernier relevé de la journée (mis à jour à 10h, 15h puis 18h15, qui fait foi). Prime = prix ÷ valeur de l'or fin contenu, au cours de l'once affiché par le site au même moment, − 1 : c'est la part du prix propre au site (frais et marge), indépendante du cours de l'or. Prix d'achat = 1er palier de quantité de la fiche produit (relevés des 15 et 16/11 : prix de la page liste).</p>
     </div>
 
     <div class="card">
@@ -141,8 +143,10 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
       <p class="sub" id="sousTitreJour"></p>
       <div class="controls" style="margin: 6px 0 4px;">
         <div class="ctl"><span>Période</span><div class="seg" id="segJour"></div></div>
+        <label class="chk"><input type="checkbox" id="chkJourPrime"> Afficher la prime (%)</label>
       </div>
       <div id="chJour" class="chart" style="height:340px"></div>
+      <div id="chJourPrime" class="chart" style="height:200px"></div>
       <p class="note">Trois relevés par jour ouvré : 10h, 15h et 18h15 (heure de Paris). Nuits et week-ends masqués. Prix d'achat au 1er palier de quantité (axe de gauche) ; once d'or affichée par le site (axe de droite) : quand les deux courbes bougent ensemble, la variation vient de l'or. Le prix du jour (tableau du haut, courbes et indicateurs) est le dernier relevé : il évolue dans la journée, celui de 18h15 fait foi.</p>
     </div>
 
@@ -183,7 +187,7 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
 
   // ---------- état (mémorisé localement)
   const defaut = { serie: "12", type: "cpr", periode: "1A", mm1: 20, mm2: 50, mm3: 200, mmType: "SMA", boll: false, rsi: true,
-    prime: false, base: false, sitePer: "1M", siteRachat: true, jourPer: "1S" };
+    prime: false, base: false, sitePer: "1M", siteRachat: true, jourPer: "1S", sitePrime: false, jourPrime: false };
   let S = Object.assign({}, defaut);
   try { Object.assign(S, JSON.parse(localStorage.getItem("suiviOr") || "{}")); } catch (e) {}
   const sauver = () => { try { localStorage.setItem("suiviOr", JSON.stringify(S)); } catch (e) {} };
@@ -261,6 +265,7 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
     $("mm1").value = S.mm1; $("mm2").value = S.mm2; $("mm3").value = S.mm3;
     $("chkBoll").checked = S.boll; $("chkRsi").checked = S.rsi;
     $("chkPrime").checked = S.prime; $("chkBase").checked = S.base; $("chkRachat").checked = S.siteRachat;
+    $("chkSitePrime").checked = S.sitePrime; $("chkJourPrime").checked = S.jourPrime;
     segP.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === S.periode));
     segM.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === S.mmType));
   }
@@ -281,6 +286,24 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
     b.title = { "1S": "1 semaine", "2S": "2 semaines", "3S": "3 semaines", "1M": "1 mois", "3M": "3 mois", "Tout": "Tout l'historique" }[k]; segSite.appendChild(b); });
   segSite.onclick = (e) => { if (e.target.dataset.v) { S.sitePer = e.target.dataset.v; sauver(); renduSite(); } };
   $("chkRachat").onchange = (e) => { S.siteRachat = e.target.checked; sauver(); renduSite(); };
+  $("chkSitePrime").onchange = (e) => { S.sitePrime = e.target.checked; sauver(); renduSite(); };
+  $("chkJourPrime").onchange = (e) => { S.jourPrime = e.target.checked; sauver(); renduJour(); };
+
+  // Prime du site = prix ÷ (once affichée par le site au même moment × or fin / 31,10 g) − 1
+  const onceSiteJour = new Map((D.or_spot_site || []).map(r => [r[0], r[1]]));
+  const onceSiteReleve = new Map((D.or_jour || []).map(r => [r[0], r[1]]));
+  const primeDe = (prix, once, g) => prix != null && once ? prix / (once / GPO * g) - 1 : null;
+  // Graphique secondaire de prime (affiché sous le graphique de prix quand la case est cochée)
+  function graphePrime(id, visible, x, series, xaxis, marge) {
+    $(id).style.display = visible ? "" : "none";
+    if (!visible) { Plotly.purge(id); return; }
+    const pctf = (v) => (v * 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " %";
+    const traces = series.map(s => ligne(x, s.y, s.nom, null, 0, Object.assign({ mode: "lines+markers",
+      line: { color: s.couleur, width: 2, dash: s.dash }, marker: { size: 7, color: s.couleur, symbol: s.symbole, line: { color: css("--surface"), width: 1.5 } },
+      text: s.y.map(v => v == null ? "" : pctf(v)), hovertemplate: "%{text}<extra>" + s.nom + "</extra>" })));
+    Plotly.react(id, traces, layoutBase({ xaxis: Object.assign({}, xaxis), showlegend: true, margin: Object.assign({ l: 64, r: 16, t: 4, b: 30 }, marge || {}),
+      yaxis: Object.assign(layoutBase().yaxis, { tickformat: ".1%", title: { text: "Prime", font: { size: 11 } } }) }), CFG);
+  }
 
   // Graphique des relevés dans la journée : nombre de jours de relevés affichés
   const PERIODES_JOUR = { "1J": 1, "3J": 3, "1S": 5 };
@@ -433,6 +456,10 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
     Plotly.react("chSite", traces, layoutBase({ xaxis, showlegend: true,
       yaxis: Object.assign(layoutBase().yaxis, { ticksuffix: " €", tickformat: ",.2f" }) }), CFG);
 
+    const sp = [{ nom: "Prime à l'achat", y: pts.map(r => primeDe(r[1], onceSiteJour.get(r[0]), p.or_fin_g)), couleur: css("--s1"), symbole: "circle" }];
+    if (S.siteRachat) sp.push({ nom: "Prime au rachat", y: pts.map(r => primeDe(r[2], onceSiteJour.get(r[0]), p.or_fin_g)), couleur: css("--s2"), dash: "dash", symbole: "diamond" });
+    graphePrime("chSitePrime", S.sitePrime, x, sp, xaxis);
+
     // Synthèse de la période
     const varA = ya.length > 1 ? ya[ya.length - 1] / ya[0] - 1 : null;
     const cls = varA == null ? "" : varA > 0 ? "up" : varA < 0 ? "down" : "flat";
@@ -477,6 +504,10 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
       tickformat: ",.0f", ticksuffix: " €", tickfont: { color: css("--s2") } };
     Plotly.react("chJour", traces, layoutBase({ xaxis, yaxis, yaxis2, showlegend: true,
       margin: { l: 64, r: 70, t: 8, b: 36 } }), CFG);
+    graphePrime("chJourPrime", S.jourPrime, pts.map(r => xd(r[0])), [
+      { nom: "Prime à l'achat", y: pts.map(r => primeDe(r[1], onceSiteReleve.get(r[0]), p.or_fin_g)), couleur: css("--s1"), symbole: "circle" },
+      { nom: "Prime au rachat", y: pts.map(r => primeDe(r[2], onceSiteReleve.get(r[0]), p.or_fin_g)), couleur: css("--s2"), dash: "dash", symbole: "diamond" },
+    ], xaxis, { r: 70 });
 
     // Synthèse : extrêmes, amplitude moyenne dans la journée, créneau le plus souvent le moins cher
     const ya = pts.map(r => r[1]);
