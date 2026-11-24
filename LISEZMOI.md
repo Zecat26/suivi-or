@@ -11,7 +11,8 @@ Outil personnel de suivi des cours : 20 Francs Marianne, Souverain, 50 Pesos, Kr
   https://github.com/Zecat26/suivi-or (commit « Collecte du … (VPS) ») et met à jour le tableau de bord en ligne.
 - **Relevés dans la journée** : à 10h00 et 15h00 (lun–ven), un relevé léger (`suivi_or.py --releve`, minuteur
   `suivi-or-releve.timer`) lit les prix des 7 fiches et l'once du site. Avec celui de 18h15, cela donne 3 points par jour
-  pour le graphique « Variations dans la journée ». Le prix du jour (courbes, indicateurs) reste celui de 18h15.
+  pour le graphique « Variations dans la journée ». Chaque relevé met aussi à jour le prix du jour (tableau, courbes,
+  indicateurs) ; en fin de journée, c'est celui de 18h15 qui reste.
 - **Collecte manuelle de secours** : onglet *Actions* du dépôt → *Collecte quotidienne* → *Run workflow*
   (le workflow GitHub n'a plus de planification automatique).
 - **Sur le VPS** : `systemctl list-timers suivi-or.timer` (prochaine collecte), `journalctl -u suivi-or` (journal),

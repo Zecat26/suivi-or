@@ -133,7 +133,7 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
         <label class="chk"><input type="checkbox" id="chkRachat"> Afficher le prix de rachat</label>
       </div>
       <div id="chSite" class="chart" style="height:340px"></div>
-      <p class="note">Un relevé par jour de collecte (le dernier de la journée). Prix d'achat = 1er palier de quantité de la fiche produit (relevés des 15 et 16/11 : prix de la page liste).</p>
+      <p class="note">Un point par jour : le dernier relevé de la journée (mis à jour à 10h, 15h puis 18h15, qui fait foi). Prix d'achat = 1er palier de quantité de la fiche produit (relevés des 15 et 16/11 : prix de la page liste).</p>
     </div>
 
     <div class="card">
@@ -143,7 +143,7 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
         <div class="ctl"><span>Période</span><div class="seg" id="segJour"></div></div>
       </div>
       <div id="chJour" class="chart" style="height:340px"></div>
-      <p class="note">Trois relevés par jour ouvré : 10h, 15h et 18h15 (heure de Paris). Nuits et week-ends masqués. Prix d'achat au 1er palier de quantité (axe de gauche) ; once d'or affichée par le site (axe de droite) : quand les deux courbes bougent ensemble, la variation vient de l'or. Les courbes principales et les indicateurs utilisent le relevé de 18h15.</p>
+      <p class="note">Trois relevés par jour ouvré : 10h, 15h et 18h15 (heure de Paris). Nuits et week-ends masqués. Prix d'achat au 1er palier de quantité (axe de gauche) ; once d'or affichée par le site (axe de droite) : quand les deux courbes bougent ensemble, la variation vient de l'or. Le prix du jour (tableau du haut, courbes et indicateurs) est le dernier relevé : il évolue dans la journée, celui de 18h15 fait foi.</p>
     </div>
 
     <div class="grid2" id="grilleAnnexes">
@@ -553,7 +553,10 @@ tr.groupe td { text-align: left; color: var(--accent); font-weight: 600; font-si
     const jour = dates[dates.length - 1];
     const ss = D.or_spot_site.find(r => r[0] === jour);
     const s = ss ? ss[1] : spotAu(jour);
-    $("jourSub").textContent = jour ? "Relevé du " + dfr(jour) + " · once d'or affichée : " + eur(s) + "/oz" : "Pas encore de relevé.";
+    const heures = D.pieces.flatMap(p => (p.jour || []).map(r => r[0])).filter(h => h.startsWith(jour || "-")).sort();
+    const heure = heures.length ? " à " + heures[heures.length - 1].slice(11, 13) + "h" + heures[heures.length - 1].slice(14, 16) : "";
+    $("jourSub").textContent = jour ? "Dernier relevé : " + dfr(jour) + heure + " · once d'or affichée : " + eur(s) + "/oz" +
+      " · mis à jour à 10h, 15h et 18h15 (le relevé de 18h15 fait foi pour la journée)" : "Pas encore de relevé.";
     $("meta").textContent = "Données générées le " + new Date(D.genere).toLocaleString("fr-FR");
     let h = "<tr><th>Produit</th><th>Or fin</th><th>Valeur or</th><th>Prix d'achat</th><th>Prime achat</th><th>Prix de rachat</th><th>Écart achat/rachat</th><th>Cotation CPR</th></tr>";
     let familleCourante = null;

@@ -17,7 +17,7 @@ Usage :
   python suivi_or.py --export     ré-export seul (sans accès réseau)
   python suivi_or.py --historique force le rechargement de 10 ans d'or (Yahoo)
   python suivi_or.py --releve     relevé léger dans la journée (fiches des produits suivis
-                                  + once du site), sans toucher au prix du jour (celui de 18h15)
+                                  + once du site) ; met à jour le prix du jour (le dernier relevé fait foi)
 """
 
 from __future__ import annotations
@@ -218,9 +218,13 @@ def collecte_fiches(cx: sqlite3.Connection, prix_du_jour: bool = True) -> None:
 
 
 def collecte_releve(cx: sqlite3.Connection) -> None:
-    """Relevé léger dans la journée : once du site (1 page) + fiches des produits suivis."""
-    _once_site(cx, http(URL_PIECES))
-    collecte_fiches(cx, prix_du_jour=False)
+    """Relevé léger dans la journée : once du site (1 page) + fiches des produits suivis.
+    Met aussi à jour le prix du jour : le dernier relevé de la journée fait foi (18h15 en fin de journée)."""
+    once = _once_site(cx, http(URL_PIECES))
+    if once:
+        cx.execute("INSERT OR REPLACE INTO or_spot VALUES (?,?,?,?)",
+                   (dt.date.today().isoformat(), "site", *once))
+    collecte_fiches(cx)
 
 
 def collecte_cpr(cx: sqlite3.Connection) -> None:
