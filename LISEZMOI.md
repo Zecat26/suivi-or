@@ -33,6 +33,7 @@ depuis le passage à GitHub, pour éviter deux collectes concurrentes. Pour la r
 | `tableau_de_bord.html` | Graphiques, moyennes mobiles, Bollinger, RSI, tendance, primes, base 100 |
 | `installer_tache.ps1` | (Ré)installe la tâche planifiée |
 | `data/csv/*.csv` | Mêmes données en CSV standard (virgules) : consultables directement sur GitHub sous forme de tableau |
+| `data/csv/etf_or.csv` | Clôtures quotidiennes (Xetra, €) de 7 ETF/ETC or : 5 « or physique » et 2 « mines d'or » (liste dans `ETF` de `suivi_or.py`) |
 | `data/csv/releves_jour.csv` | Relevés de 10h, 15h et 18h15 (horodatage, produit, prix d'achat/rachat ; id 0 = once d'or du site) |
 | `data/excel/*.csv` | Mêmes données en CSV pour Excel en français (points-virgules, décimales à virgule) : ouverture par double-clic |
 | `data/cours.db` | Base SQLite : tables `prix_site`, `cotation_cpr`, `or_spot`, `releve_jour`, `or_releve` (ouvrable avec DB Browser for SQLite, Excel via ODBC, Python/pandas…) |
