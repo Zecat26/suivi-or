@@ -1,11 +1,59 @@
 date,id_produit,produit,famille,suivi,prix_achat_eur,prix_rachat_eur
-2026-11-25,17,20 Francs Marianne,pièce,oui,639.5,593.0
-2026-11-25,11,50 Pesos,pièce,oui,4033.0,3717.0
-2026-11-25,12,Krugerrand,pièce,oui,3299.5,3077.0
-2026-11-25,38,Lingot 1 kg,lingot,oui,103988.0,99400.5
-2026-11-25,3552,Lingotin 20 g,lingot,oui,2141.0,1957.0
-2026-11-25,3553,Lingotin 50 g,lingot,oui,5266.0,4893.5
-2026-11-25,14,Souverain,pièce,oui,792.0,750.0
+2026-11-25,17,20 Francs Marianne,pièce,oui,640.0,572.0
+2026-11-25,11,50 Pesos,pièce,oui,4035.0,3719.0
+2026-11-25,12,Krugerrand,pièce,oui,3301.0,3078.5
+2026-11-25,38,Lingot 1 kg,lingot,oui,104041.0,99450.5
+2026-11-25,3552,Lingotin 20 g,lingot,oui,2142.5,1958.0
+2026-11-25,3553,Lingotin 50 g,lingot,oui,5268.5,4896.0
+2026-11-25,14,Souverain,pièce,oui,792.5,730.0
+2026-11-25,2178,1 Centin Jacque Cartier-Quebec,,non,120.0,
+2026-11-25,6448,1 Franc Institut de France-Essai-1995,,non,90.0,
+2026-11-25,6347,1 Franc Institut-Essai-1995,,non,55.0,
+2026-11-25,6414,10 Francs Conquête de l'Espace-Essai-1983,,non,95.0,
+2026-11-25,6410,10 Francs Conquête de l'Espace-Essai-1983,,non,95.0,
+2026-11-25,6416,10 Francs François Rude-Essai-1984,,non,115.0,
+2026-11-25,6403,10 Francs Hugues Capet-Essai-1987,,non,100.0,
+2026-11-25,6421,10 Francs Mathieu-Essai-1974,,non,150.0,
+2026-11-25,6407,10 Francs Roland Garros-Essai-1988,,non,100.0,
+2026-11-25,6318,100 Francs Commémorative Armistice-1995,,non,40.0,
+2026-11-25,6316,100 Francs Panthéon-Essai-1982,,non,,
+2026-11-25,6325,100 Francs commémorative André Malraux-1997,,non,80.0,
+2026-11-25,6323,100 Francs commémorative André Malraux-1997,,non,80.0,
+2026-11-25,6485,100 Lire Vatican 1869,,non,6200.0,
+2026-11-25,6361,5 Francs Pierre Mendès-Essai-1992,,non,45.0,
+2026-11-25,6357,5 Francs Semeuse-Essai-1970,,non,250.0,
+2026-11-25,6360,5 Francs Voltaire-Essai-1994,,non,45.0,
+2026-11-25,6837,Ambiens-Région d'Amiens-Statère d'or uniface,,non,,
+2026-11-25,6836,Ambiens-Région d'Amiens-Statère d'or uniface,,non,,
+2026-11-25,2598,Aquitaine - Denier Carolingien frappé à Bourges sous Charles II Le Chauve,,non,80.0,
+2026-11-25,6709,Belgique Albert I Roi des Belges 20 Francs 1914,,non,385.0,
+2026-11-25,6710,Belgique Albert I Roi des Belges 20 Francs Or 1914 Bruxelles,,non,385.0,
+2026-11-25,6699,Charles III Prince de Monaco 100 Francs 1882 Paris,,non,1950.0,
+2026-11-25,6378,Edouard VII- 2 Pounds 1902,,non,1400.0,
+2026-11-25,6417,Edouard VII-2 Pounds 1902,,non,1400.0,
+2026-11-25,6813,Jeton Premier Empire Famille impériale mars 1815,,non,100.0,
+2026-11-25,6812,Jeton Premier Empire Famille impériale mars 1815,,non,,
+2026-11-25,2599,"Louis Ier le Pieux ,Denier d'argent",,non,230.0,
+2026-11-25,6782,Louis XV X Sols de Navarre 1719 Paris,,non,170.0,
+2026-11-25,6781,Louis XV X Sols de Navarre 1719 Paris,,non,,
+2026-11-25,6772,Louis XVIII Jeton compagnie générales d'assurances Paris 1818,,non,100.0,
+2026-11-25,6771,Louis XVIII Jeton compagnie générales d'assurances Paris 1818,,non,,
+2026-11-25,6821,Médaille Louis XVIII Compagnie d'assurances générales de Paris,,non,,
+2026-11-25,6791,Napoléon III 1 Franc 1868 Strasbourg,,non,250.0,
+2026-11-25,6790,Napoléon III 1 Franc 1868 Strasbourg,,non,250.0,
+2026-11-25,6789,Napoléon III 1 Franc 1868 Strasbourg,,non,,
+2026-11-25,6764,Royaume-Uni Souverain Guillaume IV 1836,,non,,
+2026-11-25,6763,Royaume-Uni Souverain Guillaume IV 1836,,non,,
+2026-11-25,6766,Royaume-Uni Souverain Guillaume IV 1836 Londres,,non,,
+2026-11-25,6765,Royaume-Uni Souverain Guillaume IV 1836 Londres,,non,,
+2026-11-25,6768,Russie Alexandre le Grand 2 Kopecks 1801 Ekaterinebourg,,non,,
+2026-11-25,2558,Teston François I er,,non,,
+2026-11-25,6775,Trajan Denier 108 ap.J-C Rome,,non,,
+2026-11-25,6808,"Turquie, Empire Ottoman, Mahmud II, Rumi Altin Constantinople",,non,,
+2026-11-25,6807,"Turquie, Empire Ottoman, Mahmud II, Rumi Altin Constantinople",,non,,
+2026-11-25,6806,"Turquie, Empire Ottoman, Mahmud II, Rumi Altin Constantinople",,non,225.0,
+2026-11-25,6805,"Turquie, Empire Ottoman, Mahmud II, Rumi Altin Constantinople",,non,,
+2026-11-25,6804,"Turquie, Empire Ottoman, Mahmud II, Rumi Altin Constantinople",,non,,
 2026-11-24,17,20 Francs Marianne,pièce,oui,657.5,593.0
 2026-11-24,11,50 Pesos,pièce,oui,4144.0,3819.5
 2026-11-24,12,Krugerrand,pièce,oui,3390.5,3162.0
